@@ -37,7 +37,9 @@ void ObjectMapNode::callback_object_map(
       object.type = o.type;
       object.geometry.type = Geometry::LineString;
       for(const auto &p: o.geo_points){
-        object.geometry.points.push_back(cv::Vec3d(p.latitude, p.longitude, p.altitude));
+        cv::Vec3d p_lla(p.latitude, p.longitude, p.altitude);
+        cv::Vec3d p_map;
+        object.geometry.points.push_back(object_map_.convert_LLA_to_MAP(p_lla, p_map));
       }
       for(const auto &v: o.enflation_radius){
         object.geometry.enflation.push_back(v);
