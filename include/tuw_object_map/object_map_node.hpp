@@ -26,7 +26,9 @@ private:
 
   ObjectMap object_map_;
   std::string map_topic_{"object_map"};
+  std::string json_file_;
   cv::Mat map_;
+  cv::Vec3d origin_lla_;
   double map_resolution_;
 
   void declare_parameters();

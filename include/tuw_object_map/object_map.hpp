@@ -9,16 +9,26 @@
 namespace tuw_object_map
 {
 
-  class Objects
+  class Geometry
+  {
+  public:
+    enum GeometryType : uint32_t{
+      Point = 100,
+      LineString = 200,
+      Polygon = 300,
+    };
+    GeometryType type;
+    std::vector<cv::Vec3d> points;
+    std::vector<double> enflation;
+    std::vector<double> bondary;
+  };
+
+  class Object
   {
   public:
     uint64_t id;
     uint32_t type;
-    std::vector<cv::Vec3d> lla;
-    std::vector<cv::Vec3d> utm;
-    std::vector<cv::Point2d> pi;
-    std::vector<double> enflation;
-    std::vector<double> bondary;
+    Geometry geometry;
   };
 
   class ObjectMap
@@ -26,7 +36,24 @@ namespace tuw_object_map
   public:
     ObjectMap();
 
-    void process(const Objects &objects);
+
+    void process(const std::vector<Object> &objects);
+    void set_origin(cv::Vec3d lla, double resolution);
+  private:
+    cv::Vec3d origin_lla_;
+    cv::Vec3d origin_utm_;
+    int zone_utm_;
+    double map_resolution_;
+    std::vector<Object> objects_utm_;
+    std::vector<Object> objects_map_;
+
+  public:
+    static int find_utm_zone(const cv::Vec3d &lla);
+    static cv::Vec3d &convert_LLA_to_UTM(const cv::Vec3d &lla, cv::Vec3d &utm, int setzone);
+    cv::Vec3d convert_LLA_to_UTM(const cv::Vec3d &lla);
+    Object convert_LLA_to_UTM(const Object &lla);
+    cv::Vec3d convert_UTM_to_MAP(const cv::Vec3d &utm);
+    Object convert_UTM_to_MAP(const Object &lla);
   };
 }
 #endif // TUW_OBJECT_MAP__OBJECT_MAP_HPP_

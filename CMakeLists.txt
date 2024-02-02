@@ -10,12 +10,14 @@ find_package(ament_cmake REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(tuw_geometry_msgs REQUIRED)
 find_package(tuw_object_map_msgs REQUIRED)
 find_package(tuw_json REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3)
-
+find_package (GeographicLib 2.0 REQUIRED)
+include_directories (${GeographicLib_INCLUDE_DIRS})
 
 
 
@@ -30,8 +32,11 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "tuw_geometry_msgs"
   "tuw_object_map_msgs"
+  "tuw_json"
   "OpenCV"
+  "GeographicLib"
 )
 
 add_executable(generate_object_costmap src/standalone_object_map.cpp src/object_map_node.cpp)
@@ -45,11 +50,32 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "tuw_geometry_msgs"
   "tuw_object_map_msgs"
+  "tuw_json"
   "OpenCV"
+  "GeographicLib"
 )
 
+add_executable(example_object_map src/example/main_object_map.cpp)
+target_include_directories(example_object_map PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(example_object_map PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_link_libraries(example_object_map object_map )
+ament_target_dependencies(
+  example_object_map
+  "rclpy"
+  "rclcpp"
+  "rclcpp_components"
+  "tuw_geometry_msgs"
+  "tuw_object_map_msgs"
+  "tuw_json"
+  "OpenCV"
+  "GeographicLib"
+)
 install(TARGETS 
+  example_object_map
   generate_object_costmap
   object_map
   DESTINATION lib/${PROJECT_NAME})
