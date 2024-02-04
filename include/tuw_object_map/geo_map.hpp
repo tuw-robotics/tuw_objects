@@ -23,6 +23,17 @@ namespace tuw_object_map
         * @param overwrite_map_orgin on true it moves the map orition form cell (0,0) into the map center
         */
         void init(double latitude, double longitude, double altitude, bool overwrite_map_orgin = false);
+        /*
+        * inti all meta data and transformation matrix
+        * @param utm_easting
+        * @param utm_northing
+        * @param altitude
+        * @param utm_zone
+        * @param utm_northp
+        * @param overwrite_map_orgin on true it moves the map orition form cell (0,0) into the map center
+        */
+        void init(double utm_easting, double utm_northing, double altitude, int utm_zone, bool utm_northp, bool overwrite_map_orgin);
+
         std::string info_map() const;
         std::string info_geo() const;
         double dx() const;

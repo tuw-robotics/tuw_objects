@@ -4,9 +4,8 @@
 #include <opencv2/imgproc.hpp>
 #include <tuw_object_map/geo_map.hpp>
 
-void onMouse(int event, int x, int y, int flags, void *userdata)
+void onMouse(int event, int x, int y, int, void *userdata)
 {
-
   tuw_object_map::GeoMapMetaData *info = (tuw_object_map::GeoMapMetaData *)userdata;
   cv::Vec3d lla = info->m2g(cv::Point(x,y));
   if (event == cv::EVENT_LBUTTONDOWN)

@@ -37,27 +37,19 @@ namespace tuw_object_map
   {
   public:
     ObjectMap();
-
-
     void process(const std::vector<Object> &objects);
-    void origin_world(cv::Vec3d lla);
-    void init_map(double map_resolution, cv::Size2d map_size, cv::Vec2d map_offset);
     void init_map(const std::string &mapimage);
+    void init_map(double latitude, double longitude, double altitude);
+    void line(cv::Vec3d start, cv::Vec3d end, double bondary, double enflation);
     const cv::Mat &object_image();
-    const GeoMapMetaData &map_meta_data();
-    tuw::WorldScopedMaps map_header_;
-    cv::Mat img_objects_;
+    GeoMapMetaData &info(){
+      return info_;
+    }
+    cv::Mat img_costmap_;
+    cv::Mat img_map_;
   private:
-    cv::Vec3d origin_lla_;
-    cv::Vec3d origin_utm_;
-    int zone_utm_;
     std::vector<Object> objects_;  /// pix/meter 
-    tuw::FigurePtr map_;
-    std::string background_image_filename_;
-
-    static std::vector<double> read_geo_info_jgw(const std::string &filename);
-  public:
-    cv::Vec3d &convert_LLA_to_MAP(const cv::Vec3d &lla, cv::Vec3d &map);
+    GeoMapMetaData info_;
   };
 }
 #endif // TUW_OBJECT_MAP__OBJECT_MAP_HPP_

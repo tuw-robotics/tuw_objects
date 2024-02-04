@@ -37,8 +37,6 @@ namespace tuw_object_map
     double map_resolution_;
     cv::Vec3d map_origin_;
     cv::Size map_size_;
-    GeoMapMetaData info_;
-
     void declare_parameters();
     void read_parameters();
   };

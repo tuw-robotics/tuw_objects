@@ -31,23 +31,16 @@ void ObjectMapNode::callback_object_map(
   const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "I received a map");
-  /*
+
   std::vector<Object> objects;
-  object_map_.origin_world(origin_lla_);
-  if(mapimage_folder_.empty()){
-    object_map_.init_map(map_resolution_, map_size_, map_origin_);
-  } else {
-    object_map_.init_map(mapimage_folder_);
-  }
   for(const auto &o: msg->objects){
       Object object;
       object.id = o.id;
       object.type = o.type;
       object.geometry.type = Geometry::LineString;
       for(const auto &p: o.geo_points){
-        cv::Vec3d p_lla(p.latitude, p.longitude, p.altitude);
-        cv::Vec3d p_map;
-        object.geometry.points.push_back(object_map_.convert_LLA_to_MAP(p_lla, p_map));
+        cv::Vec3d p_g(p.latitude, p.longitude, p.altitude);
+        object.geometry.points.push_back(p_g);
       }
       for(const auto &v: o.enflation_radius){
         object.geometry.enflation.push_back(v);
@@ -66,7 +59,7 @@ void ObjectMapNode::callback_object_map(
     costmap.info.height = 100; // Set your desired height
     costmap.info.resolution = 0.1; // Set your desired resolution
     costmap.data.resize(costmap.info.width * costmap.info.height, 0);
-    */
+  
 }
 
 void ObjectMapNode::callback_timer() { 
@@ -88,13 +81,13 @@ void ObjectMapNode::declare_parameters()
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "mapimage folder";
-    //this->declare_parameter<std::string>("mapimage_folder", "/home/markus/Downloads/mapimage/", descriptor);
-    this->declare_parameter<std::string>("mapimage_folder", "", descriptor);
+    this->declare_parameter<std::string>("mapimage_folder", "/home/markus/Downloads/mapimage/", descriptor);
+    //this->declare_parameter<std::string>("mapimage_folder", "", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "resolution m/pix";
-    this->declare_parameter<double>("resolution", 0.2, descriptor);
+    this->declare_parameter<double>("resolution", 1. / 5.0, descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -133,6 +126,7 @@ void ObjectMapNode::declare_parameters()
   }
 }
 
+
 void ObjectMapNode::read_parameters()
 {
   double latitude, longitude, altitude;
@@ -142,15 +136,19 @@ void ObjectMapNode::read_parameters()
   RCLCPP_INFO(this->get_logger(), "mapimage_folder: %s", mapimage_folder_.c_str());
   this->get_parameter<std::string>("json_file", json_file_);
   RCLCPP_INFO(this->get_logger(), "json_file: %s", json_file_.c_str());
-  this->get_parameter<double>("resolution", info_.resolution);
-  this->get_parameter<int>("map_width", info_.size.width);
-  this->get_parameter<int>("map_height", info_.size.height);
-  this->get_parameter<double>("map_origin_x", info_.origin[0]);
-  this->get_parameter<double>("map_origin_y", info_.origin[1]);
+  this->get_parameter<double>("resolution", object_map_.info().resolution);
+  this->get_parameter<int>("map_width", object_map_.info().size.width);
+  this->get_parameter<int>("map_height", object_map_.info().size.height);
+  this->get_parameter<double>("map_origin_x", object_map_.info().origin[0]);
+  this->get_parameter<double>("map_origin_y", object_map_.info().origin[1]);
   this->get_parameter<double>("origin_latitude", latitude);
   this->get_parameter<double>("origin_longitude",longitude);
   this->get_parameter<double>("origin_altitude", altitude);
-  info_.init(latitude, longitude, altitude);
-  RCLCPP_INFO(this->get_logger(), "%s", info_.info_map().c_str());
-  RCLCPP_INFO(this->get_logger(), "%s", info_.info_geo().c_str());
+  if (mapimage_folder_.empty()){
+    object_map_.init_map(latitude, longitude, altitude);
+  } else {
+    object_map_.init_map(mapimage_folder_);
+  }
+  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_map().c_str());
+  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_geo().c_str());
 }

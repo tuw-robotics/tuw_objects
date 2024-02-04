@@ -11,9 +11,13 @@ GeoMapMetaData::GeoMapMetaData()
 {
 }
 
-void GeoMapMetaData::init(double latitude, double longitude, double altitude, bool overwrite_map_orgin)
+void GeoMapMetaData::init(double utm_easting, double utm_northing, double altitude, int utm_zone, bool utm_northp, bool overwrite_map_orgin)
 {
-  GeographicLib::UTMUPS::Forward(latitude, longitude, utm_zone, utm_northp, origin_world_utm[0], origin_world_utm[1]);
+  origin_world_utm[0] = utm_easting;
+  origin_world_utm[1] = utm_northing;
+  origin_world_utm[2] = altitude;
+  this->utm_zone = utm_zone;
+  this->utm_northp = utm_northp;
   origin_world_utm[2] = altitude;
   double mx = origin[0], my = origin[1];             ///< offset of the visualized space [m]
   double sx = 1. / resolution, sy = 1. / resolution; ///< scale [m/pix]
@@ -34,6 +38,15 @@ void GeoMapMetaData::init(double latitude, double longitude, double altitude, bo
     Mw2m = R * Sp * Sc * Tw;
   }
   Mm2w = Mw2m.inv();
+}
+
+void GeoMapMetaData::init(double latitude, double longitude, double altitude, bool overwrite_map_orgin)
+{
+  int zone;
+  bool northp;
+  double easting, northing;
+  GeographicLib::UTMUPS::Forward(latitude, longitude, zone, northp, easting, northing);
+  init(easting, northing, altitude, zone, northp, overwrite_map_orgin);
 }
 
 double GeoMapMetaData::dx() const
