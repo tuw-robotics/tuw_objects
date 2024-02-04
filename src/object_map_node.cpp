@@ -21,6 +21,7 @@ ObjectMapNode::ObjectMapNode(const std::string & node_name)
     tuw_object_map_msgs::msg::ObjectMap::SharedPtr map = std::make_shared<tuw_object_map_msgs::msg::ObjectMap>();
     tuw_json::fromJson(tuw_json::read(json_file_, "object_map"), *map);
     callback_object_map(map);
+    callback_timer();
   }
   using namespace std::chrono_literals;
   timer_ = create_wall_timer(5000ms, std::bind(&ObjectMapNode::callback_timer, this));
@@ -32,38 +33,39 @@ void ObjectMapNode::callback_object_map(
 {
   RCLCPP_INFO(this->get_logger(), "I received a map");
 
-  std::vector<Object> objects;
   for(const auto &o: msg->objects){
-      Object object;
-      object.id = o.id;
-      object.type = o.type;
-      object.geometry.type = Geometry::LineString;
-      for(const auto &p: o.geo_points){
-        cv::Vec3d p_g(p.latitude, p.longitude, p.altitude);
-        object.geometry.points.push_back(p_g);
+      cv::Vec3d p0, p1;
+      if(o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW){
+        if(o.geo_points.size() > 0){
+          p0 = cv::Vec3d (o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+        }
+        for(size_t i = 1; i < o.geo_points.size(); i++){
+          p1 = cv::Vec3d (o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+          double enflation = o.enflation_radius[i];
+          double bondary = o.bondary_radius[i];
+          object_map_.line(p0, p1, bondary, enflation);
+        }
       }
-      for(const auto &v: o.enflation_radius){
-        object.geometry.enflation.push_back(v);
-      }
-      for(const auto &v: o.bondary_radius){
-        object.geometry.bondary.push_back(v);
-      }
-      objects.push_back(std::move(object));
   }
   
-  object_map_.process(objects);
+  cv::Mat &img_costmap = object_map_.process();
 
-    nav_msgs::msg::OccupancyGrid costmap;
-    costmap.header.frame_id = "map";
-    costmap.info.width = 100;  // Set your desired width
-    costmap.info.height = 100; // Set your desired height
-    costmap.info.resolution = 0.1; // Set your desired resolution
-    costmap.data.resize(costmap.info.width * costmap.info.height, 0);
+  nav_msgs::msg::OccupancyGrid costmap;
+  costmap.header.frame_id = frame_id_;
+  costmap.info.width = img_costmap.cols;  // Set your desired width
+  costmap.info.height = img_costmap.rows; // Set your desired height
+  costmap.info.resolution = 0.1; // Set your desired resolution
+  costmap.data.resize(costmap.info.width * costmap.info.height, 0);
+  for(size_t i = 0; i < costmap.data.size(); i++){
+    costmap.data[i] = img_costmap.data[i];
+  }
+  pub_object_costmap_->publish(costmap);
   
 }
 
 void ObjectMapNode::callback_timer() { 
   RCLCPP_INFO(this->get_logger(), "on_timer"); 
+  object_map_.imshow();
 }
 
 void ObjectMapNode::declare_parameters()
@@ -72,6 +74,11 @@ void ObjectMapNode::declare_parameters()
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "map topic";
     this->declare_parameter<std::string>("map_topic", "object_map", descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "frame_id";
+    this->declare_parameter<std::string>("frame_id", "map", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -132,6 +139,8 @@ void ObjectMapNode::read_parameters()
   double latitude, longitude, altitude;
   this->get_parameter<std::string>("map_topic", map_topic_);
   RCLCPP_INFO(this->get_logger(), "map_topic: %s", map_topic_.c_str());
+  this->get_parameter<std::string>("frame_id", frame_id_);
+  RCLCPP_INFO(this->get_logger(), "frame_id: %s", frame_id_.c_str());
   this->get_parameter<std::string>("mapimage_folder", mapimage_folder_);
   RCLCPP_INFO(this->get_logger(), "mapimage_folder: %s", mapimage_folder_.c_str());
   this->get_parameter<std::string>("json_file", json_file_);

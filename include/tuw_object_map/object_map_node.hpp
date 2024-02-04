@@ -30,6 +30,7 @@ namespace tuw_object_map
 
     ObjectMap object_map_;
     std::string map_topic_{"object_map"};
+    std::string frame_id_{"map"};
     std::string mapimage_folder_;
     std::string json_file_;
     cv::Mat map_;
