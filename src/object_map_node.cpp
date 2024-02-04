@@ -12,6 +12,8 @@ ObjectMapNode::ObjectMapNode(const std::string & node_name)
   declare_parameters();
   read_parameters();
 
+  pub_object_costmap_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_costmap", 10);
+
   if(json_file_.empty()){
   sub_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>(
     map_topic_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
@@ -29,8 +31,14 @@ void ObjectMapNode::callback_object_map(
   const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "I received a map");
+  /*
   std::vector<Object> objects;
-  object_map_.set_origin(origin_lla_, map_resolution_);
+  object_map_.origin_world(origin_lla_);
+  if(mapimage_folder_.empty()){
+    object_map_.init_map(map_resolution_, map_size_, map_origin_);
+  } else {
+    object_map_.init_map(mapimage_folder_);
+  }
   for(const auto &o: msg->objects){
       Object object;
       object.id = o.id;
@@ -49,7 +57,16 @@ void ObjectMapNode::callback_object_map(
       }
       objects.push_back(std::move(object));
   }
+  
   object_map_.process(objects);
+
+    nav_msgs::msg::OccupancyGrid costmap;
+    costmap.header.frame_id = "map";
+    costmap.info.width = 100;  // Set your desired width
+    costmap.info.height = 100; // Set your desired height
+    costmap.info.resolution = 0.1; // Set your desired resolution
+    costmap.data.resize(costmap.info.width * costmap.info.height, 0);
+    */
 }
 
 void ObjectMapNode::callback_timer() { 
@@ -70,8 +87,34 @@ void ObjectMapNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "mapimage folder";
+    //this->declare_parameter<std::string>("mapimage_folder", "/home/markus/Downloads/mapimage/", descriptor);
+    this->declare_parameter<std::string>("mapimage_folder", "", descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "resolution m/pix";
-    this->declare_parameter<double>("resolution", 0.05, descriptor);
+    this->declare_parameter<double>("resolution", 0.2, descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "map width [cells]";
+    this->declare_parameter<int>("map_width", 1000, descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "map height [cells]";
+    this->declare_parameter<int>("map_height", 1000, descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "The origin of the map [m, m, rad].  This is the real-world pose of the cell (0,0) in the map";
+    this->declare_parameter<double>("map_origin_x", 0, descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "The origin of the map [m, m, rad].  This is the real-world pose of the cell (0,0) in the map";
+    this->declare_parameter<double>("map_origin_y", 0, descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -92,14 +135,22 @@ void ObjectMapNode::declare_parameters()
 
 void ObjectMapNode::read_parameters()
 {
+  double latitude, longitude, altitude;
   this->get_parameter<std::string>("map_topic", map_topic_);
   RCLCPP_INFO(this->get_logger(), "map_topic: %s", map_topic_.c_str());
+  this->get_parameter<std::string>("mapimage_folder", mapimage_folder_);
+  RCLCPP_INFO(this->get_logger(), "mapimage_folder: %s", mapimage_folder_.c_str());
   this->get_parameter<std::string>("json_file", json_file_);
   RCLCPP_INFO(this->get_logger(), "json_file: %s", json_file_.c_str());
-  this->get_parameter<double>("resolution", map_resolution_);
-  RCLCPP_INFO(this->get_logger(), "resolution: %f", map_resolution_);
-  this->get_parameter<double>("origin_latitude", origin_lla_[0]);
-  this->get_parameter<double>("origin_longitude", origin_lla_[1]);
-  this->get_parameter<double>("origin_altitude", origin_lla_[2]);
-  RCLCPP_INFO(this->get_logger(), "origin: %f, %f, %f", origin_lla_[0], origin_lla_[1], origin_lla_[2]);
+  this->get_parameter<double>("resolution", info_.resolution);
+  this->get_parameter<int>("map_width", info_.size.width);
+  this->get_parameter<int>("map_height", info_.size.height);
+  this->get_parameter<double>("map_origin_x", info_.origin[0]);
+  this->get_parameter<double>("map_origin_y", info_.origin[1]);
+  this->get_parameter<double>("origin_latitude", latitude);
+  this->get_parameter<double>("origin_longitude",longitude);
+  this->get_parameter<double>("origin_altitude", altitude);
+  info_.init(latitude, longitude, altitude);
+  RCLCPP_INFO(this->get_logger(), "%s", info_.info_map().c_str());
+  RCLCPP_INFO(this->get_logger(), "%s", info_.info_geo().c_str());
 }

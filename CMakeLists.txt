@@ -10,6 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(tuw_geometry REQUIRED)
 find_package(tuw_geometry_msgs REQUIRED)
 find_package(tuw_object_map_msgs REQUIRED)
 find_package(tuw_json REQUIRED)
@@ -22,7 +24,7 @@ include_directories (${GeographicLib_INCLUDE_DIRS})
 
 
 
-add_library(object_map src/object_map.cpp)
+add_library(object_map src/object_map.cpp src/geo_map.cpp)
 target_compile_features(object_map PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 target_include_directories(object_map PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -32,6 +34,8 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "nav_msgs"
+  "tuw_geometry"
   "tuw_geometry_msgs"
   "tuw_object_map_msgs"
   "tuw_json"
@@ -50,6 +54,8 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "nav_msgs"
+  "tuw_geometry"
   "tuw_geometry_msgs"
   "tuw_object_map_msgs"
   "tuw_json"
@@ -68,14 +74,38 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "nav_msgs"
+  "tuw_geometry"
   "tuw_geometry_msgs"
   "tuw_object_map_msgs"
   "tuw_json"
   "OpenCV"
   "GeographicLib"
 )
+
+add_executable(example_geo_map src/example/main_geo_map.cpp)
+target_include_directories(example_geo_map PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(example_geo_map PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_link_libraries(example_geo_map object_map )
+ament_target_dependencies(
+  example_geo_map
+  "rclpy"
+  "rclcpp"
+  "rclcpp_components"
+  "nav_msgs"
+  "tuw_geometry"
+  "tuw_geometry_msgs"
+  "tuw_object_map_msgs"
+  "tuw_json"
+  "OpenCV"
+  "GeographicLib"
+)
+
 install(TARGETS 
   example_object_map
+  example_geo_map
   generate_object_costmap
   object_map
   DESTINATION lib/${PROJECT_NAME})

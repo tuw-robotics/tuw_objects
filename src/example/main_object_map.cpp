@@ -5,20 +5,20 @@
 
 int find_utm_zone(const cv::Vec3d &lla)
 {
-        int zone;
-        bool northp;
-        double x, y, gamma, k;
-        GeographicLib::UTMUPS::Forward(lla[0], lla[1], zone, northp, x, y, gamma, k);
-        return zone;
+  int zone;
+  bool northp;
+  double x, y, gamma, k;
+  GeographicLib::UTMUPS::Forward(lla[0], lla[1], zone, northp, x, y, gamma, k);
+  return zone;
 }
 cv::Vec3d &convert_LLA_to_UTM(const cv::Vec3d &lla, cv::Vec3d &utm, int setzone)
 {
-        int zone;
-        bool northp;
-        double x, y, gamma, k;
-        GeographicLib::UTMUPS::Forward(lla[0], lla[1], zone, northp, x, y, gamma, k, setzone);
-        utm[0] = x, utm[1] = y;
-        return utm;
+  int zone;
+  bool northp;
+  double x, y, gamma, k;
+  GeographicLib::UTMUPS::Forward(lla[0], lla[1], zone, northp, x, y, gamma, k, setzone);
+  utm[0] = x, utm[1] = y;
+  return utm;
 }
 
 int main(int argc, char ** argv)
