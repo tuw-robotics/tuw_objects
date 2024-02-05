@@ -12,8 +12,8 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   declare_parameters();
   read_parameters();
 
-  pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_costmap", 10);
-  pub_occupancy_grid_img_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_img_map", 10);
+  pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_costmap", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+  pub_occupancy_grid_img_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_img_map", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
   if (json_file_.empty())
@@ -52,6 +52,23 @@ void ObjectMapNode::callback_object_map(
         double enflation = o.enflation_radius[i];
         double bondary = o.bondary_radius[i];
         object_map_.line(p0, p1, bondary, enflation);
+        p0 = p1;
+      }
+    }else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT) ||
+              (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_STREET) ||
+              (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_GRAVEL))
+    {
+      if (o.geo_points.size() > 0)
+      {
+        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+      }
+      for (size_t i = 1; i < o.geo_points.size(); i++)
+      {
+        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+        double enflation = o.enflation_radius[i];
+        double bondary = o.bondary_radius[i];
+        object_map_.line(p0, p1, bondary, enflation);
+        p0 = p1;
       }
     }
   }
@@ -120,37 +137,47 @@ void ObjectMapNode::callback_object_map(
 
 void ObjectMapNode::publish_transforms()
 {
+  if (publish_utm_)
   {
-    geometry_msgs::msg::TransformStamped tf_map;
-    tf_map.header.stamp = this->get_clock()->now();
-    tf_map.header.frame_id = "utm";
-    tf_map.child_frame_id = frame_id_;
-    tf_map.transform.translation.x = object_map_.info().utm()[0];
-    tf_map.transform.translation.y = object_map_.info().utm()[1];
-    tf_map.transform.translation.z = object_map_.info().utm()[2];
-    tf_broadcaster_->sendTransform(tf_map);
+    geometry_msgs::msg::TransformStamped tf;
+    tf.header.stamp = this->get_clock()->now();
+    tf.header.frame_id = frame_utm_;
+    tf.child_frame_id = frame_map_;
+    tf.transform.translation.x = object_map_.info().utm()[0];
+    tf.transform.translation.y = object_map_.info().utm()[1];
+    tf.transform.translation.z = object_map_.info().utm()[2];
+    RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
+    tf_broadcaster_->sendTransform(tf);
   }
   {
-    geometry_msgs::msg::TransformStamped tf_object_map;
-    tf_object_map.header.stamp = this->get_clock()->now();
-    tf_object_map.header.frame_id = "utm";
-    tf_object_map.child_frame_id = frame_object_map_;
-    tf_object_map.transform.translation.x = object_map_.info().utm()[0];
-    tf_object_map.transform.translation.y = object_map_.info().utm()[1];
-    tf_object_map.transform.translation.z = object_map_.info().utm()[2];
-    tf_broadcaster_->sendTransform(tf_object_map);
+    geometry_msgs::msg::TransformStamped tf;
+    tf.header.stamp = this->get_clock()->now();
+    tf.header.frame_id = (publish_utm_ ? frame_utm_ : frame_map_);
+    tf.child_frame_id = frame_object_map_;
+    if (publish_utm_)
+    {
+      tf.transform.translation.x = object_map_.info().utm()[0];
+      tf.transform.translation.y = object_map_.info().utm()[1];
+      tf.transform.translation.z = object_map_.info().utm()[2];
+    }
+    RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
+    tf_broadcaster_->sendTransform(tf);
   }
 
   if (!object_map_.img_map().empty())
   {
-    geometry_msgs::msg::TransformStamped tf_satellit_map;
-    tf_satellit_map.header.stamp = this->get_clock()->now();
-    tf_satellit_map.header.frame_id = "utm";
-    tf_satellit_map.child_frame_id = frame_satellit_map_;
-    tf_satellit_map.transform.translation.x = object_map_.info().utm()[0];
-    tf_satellit_map.transform.translation.y = object_map_.info().utm()[1];
-    tf_satellit_map.transform.translation.z = object_map_.info().utm()[2];
-    tf_broadcaster_->sendTransform(tf_satellit_map);
+    geometry_msgs::msg::TransformStamped tf;
+    tf.header.stamp = this->get_clock()->now();
+    tf.header.frame_id = (publish_utm_ ? frame_utm_ : frame_map_);
+    tf.child_frame_id = frame_satellit_map_;
+    if (publish_utm_)
+    {
+      tf.transform.translation.x = object_map_.info().utm()[0];
+      tf.transform.translation.y = object_map_.info().utm()[1];
+      tf.transform.translation.z = object_map_.info().utm()[2];
+    }
+    tf_broadcaster_->sendTransform(tf);
+    RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
   }
 }
 
@@ -185,8 +212,13 @@ void ObjectMapNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "frame_id";
-    this->declare_parameter<std::string>("frame_id", "map", descriptor);
+    descriptor.description = "frame_map";
+    this->declare_parameter<std::string>("frame_map", "map", descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "frame_utm only need if publish_utm == true";
+    this->declare_parameter<std::string>("frame_utm", "utm", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -248,6 +280,11 @@ void ObjectMapNode::declare_parameters()
     descriptor.description = "origin altitude";
     this->declare_parameter<double>("origin_altitude", 338.917, descriptor);
   }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "on true the maps are published in relative to utm, otherwise with a zero link to frame_map";
+    this->declare_parameter<bool>("publish_utm", false, descriptor);
+  }
 }
 
 void ObjectMapNode::read_parameters()
@@ -257,10 +294,14 @@ void ObjectMapNode::read_parameters()
   RCLCPP_INFO(this->get_logger(), "map_topic: %s", map_topic_.c_str());
   this->get_parameter<bool>("show_map", show_map_);
   RCLCPP_INFO(this->get_logger(), "show_map: %s", (show_map_ ? "true" : "false"));
-  this->get_parameter<std::string>("frame_id", frame_id_);
-  this->get_parameter<std::string>("frame_object_map_", frame_object_map_);
+  this->get_parameter<std::string>("frame_map", frame_map_);
+  this->get_parameter<std::string>("frame_utm", frame_utm_);
+  this->get_parameter<std::string>("frame_object_map", frame_object_map_);
   this->get_parameter<std::string>("frame_satellit_map", frame_satellit_map_);
-  RCLCPP_INFO(this->get_logger(), "frame_id_: %s, frame_object_map_: %s, frame_satellit_map: %s", frame_id_.c_str(), frame_object_map_.c_str(), frame_satellit_map_.c_str());
+  RCLCPP_INFO(this->get_logger(), "frame_map: %s, frame_utm: %s, frame_object_map: %s, frame_satellit_map: %s",
+              frame_map_.c_str(), frame_utm_.c_str(), frame_object_map_.c_str(), frame_satellit_map_.c_str());
+  RCLCPP_INFO(this->get_logger(), "publish_utm: %s",
+              (publish_utm_ ? " true -> maps are published in utm" : " false -> maps are published in map"));
   this->get_parameter<std::string>("mapimage_folder", mapimage_folder_);
   this->get_parameter<std::string>("json_file", json_file_);
   RCLCPP_INFO(this->get_logger(), "json_file: %s", json_file_.c_str());
@@ -272,6 +313,7 @@ void ObjectMapNode::read_parameters()
   this->get_parameter<double>("origin_latitude", latitude);
   this->get_parameter<double>("origin_longitude", longitude);
   this->get_parameter<double>("origin_altitude", altitude);
+  this->get_parameter<bool>("publish_utm", publish_utm_);
   if (mapimage_folder_.empty())
   {
     object_map_.init_map(latitude, longitude, altitude);

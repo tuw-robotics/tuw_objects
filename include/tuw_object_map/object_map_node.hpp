@@ -35,10 +35,12 @@ namespace tuw_object_map
     nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_map_;
     nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_img_;
     ObjectMap object_map_;
-    std::string map_topic_{"object_map"};
-    std::string frame_id_{"map"};
-    std::string frame_object_map_{"object_map"};
-    std::string frame_satellit_map_{"satellit_map"};
+    std::string map_topic_;
+    bool publish_utm_;
+    std::string frame_map_;
+    std::string frame_utm_;
+    std::string frame_object_map_;
+    std::string frame_satellit_map_;
     std::string mapimage_folder_;
     std::string json_file_;
     bool show_map_;

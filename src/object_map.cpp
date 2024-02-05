@@ -45,10 +45,14 @@ ObjectMap::ObjectMap()
 void ObjectMap::line(cv::Vec3d start, cv::Vec3d end, double bondary, double enflation){
     cv::Point a = info_.g2m(start);
     cv::Point b = info_.g2m(end);
-    int thickness_bondary = bondary * 2. / info_.resolution;
-    cv::line(img_costmap_, a, b, cv::Scalar(CELL_FREE), thickness_bondary);
-    int thickness_enflation = enflation * 2. / info_.resolution;
-    cv::line(img_costmap_, a, b, cv::Scalar(CELL_OCCUPIED), thickness_enflation);
+    if(bondary > 0){
+      int thickness_bondary = bondary * 2. / info_.resolution;
+      cv::line(img_costmap_, a, b, cv::Scalar(CELL_FREE), thickness_bondary);
+    }
+    if(enflation > 0){
+      int thickness_enflation = enflation * 2. / info_.resolution;
+      cv::line(img_costmap_, a, b, cv::Scalar(CELL_OCCUPIED), thickness_enflation);
+    }
     if (!img_map_.empty())
       cv::line(img_map_, a, b, cv::Scalar(0, 0xFF, 0), 1);
 }
