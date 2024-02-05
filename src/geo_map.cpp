@@ -7,46 +7,35 @@
 
 using namespace tuw_object_map;
 GeoMapMetaData::GeoMapMetaData()
-    : resolution(1), size(0, 0), origin(0, 0), rotation(0), origin_world_utm(0, 0, 0), utm_zone(-1), Mw2m(cv::Matx33d::eye())
+    : resolution(1), size(0, 0), origin(), utm_offset(0, 0, 0), utm_zone(-1), Mw2m(cv::Matx33d::eye())
 {
 }
 
-void GeoMapMetaData::init(double utm_easting, double utm_northing, double altitude, int utm_zone, bool utm_northp, bool overwrite_map_orgin)
+void GeoMapMetaData::init(double utm_easting, double utm_northing, double altitude, int utm_zone, bool utm_northp)
 {
-  origin_world_utm[0] = utm_easting;
-  origin_world_utm[1] = utm_northing;
-  origin_world_utm[2] = altitude;
+  utm_offset[0] = utm_easting;
+  utm_offset[1] = utm_northing;
+  utm_offset[2] = altitude;
   this->utm_zone = utm_zone;
   this->utm_northp = utm_northp;
-  origin_world_utm[2] = altitude;
-  double mx = origin[0], my = origin[1];             ///< offset of the visualized space [m]
+  utm_offset[2] = altitude;
   double sx = 1. / resolution, sy = 1. / resolution; ///< scale [m/pix]
-  double ca = cos(rotation), sa = sin(rotation);     ///< rotation
 
-  cv::Matx<double, 3, 3> Tw(1, 0, mx, 0, 1, my, 0, 0, 1);   // translation visualized space [m]
+  cv::Matx<double, 3, 3> Tw = origin.mat();   // translation visualized space [m]
   cv::Matx<double, 3, 3> Sc(sx, 0, 0, 0, sy, 0, 0, 0, 1);   // scaling
   cv::Matx<double, 3, 3> Sp(1, 0, 0, 0, -1, 0, 0, 0, 1);    // fix mirror and rotation
-  cv::Matx<double, 3, 3> R(ca, -sa, 0, sa, ca, 0, 0, 0, 1); // rotation
-  if (overwrite_map_orgin)
-  {
-    double ox = (size.width + 1.) / 2., oy = (size.height + 1.) / 2.; ///< image offset [pix]
-    cv::Matx<double, 3, 3> Tm(1, 0, ox, 0, 1, oy, 0, 0, 1);           // translation image
-    Mw2m = Tm * R * Sp * Sc * Tw;
-  }
-  else
-  {
-    Mw2m = R * Sp * Sc * Tw;
-  }
+  Mw2m = Sp * Sc * Tw;
+  
   Mm2w = Mw2m.inv();
 }
 
-void GeoMapMetaData::init(double latitude, double longitude, double altitude, bool overwrite_map_orgin)
+void GeoMapMetaData::init(double latitude, double longitude, double altitude)
 {
   int zone;
   bool northp;
   double easting, northing;
   GeographicLib::UTMUPS::Forward(latitude, longitude, zone, northp, easting, northing);
-  init(easting, northing, altitude, zone, northp, overwrite_map_orgin);
+  init(easting, northing, altitude, zone, northp);
 }
 
 double GeoMapMetaData::dx() const
@@ -60,16 +49,16 @@ double GeoMapMetaData::dy() const
 std::string GeoMapMetaData::info_map() const
 {
   char txt[0x1FF];
-  sprintf(txt, "MapInfo: [%4dpix, %4dpix] * %6.5f m/pix = [%6.2fm, %6.2fm]; origin: [%6.2fm, %6.2fm, %6.2fm]", size.width, size.height, resolution, dx(), dy(), origin[0], origin[1], origin[2]);
+  sprintf(txt, "MapInfo: [%4dpix, %4dpix] * %6.5f m/pix = [%6.2fm, %6.2fm]; origin: [%6.2fm, %6.2fm, %4.3frad]", size.width, size.height, resolution, dx(), dy(), origin.x(), origin.y(), origin.alpha());
   return txt;
 }
 
 std::string GeoMapMetaData::info_geo() const
 {
   char txt[0x1FF];
-  cv::Vec3d origin_world_lla = utm2lla(origin_world_utm);
+  cv::Vec3d origin_world_lla = utm2lla(utm_offset);
   sprintf(txt, "GeoInfo: [%12.10f°, %12.10f°, %12.10fm] --> [%12.10fm, %12.10fm, %12.10fm] zone %d %s",
-          origin_world_lla[0], origin_world_lla[1], origin_world_lla[2], origin_world_utm[0], origin_world_utm[1], origin_world_utm[2], utm_zone,
+          origin_world_lla[0], origin_world_lla[1], origin_world_lla[2], utm_offset[0], utm_offset[1], utm_offset[2], utm_zone,
           (utm_northp ? "north" : "south"));
   return txt;
 }
@@ -103,7 +92,7 @@ cv::Vec3d GeoMapMetaData::utm2lla(const cv::Vec3d &src) const
 
 cv::Vec3d &GeoMapMetaData::utm2world(const cv::Vec3d &src, cv::Vec3d &des) const
 {
-  des = src - origin_world_utm;
+  des = src - utm_offset;
   return des;
 }
 cv::Vec3d GeoMapMetaData::utm2world(const cv::Vec3d &src) const
@@ -172,7 +161,7 @@ cv::Vec2d GeoMapMetaData::map2world(const cv::Vec2d &src) const
 
 cv::Vec3d &GeoMapMetaData::world2utm(const cv::Vec3d &src, cv::Vec3d &des) const
 {
-  des = src + origin_world_utm;
+  des = src + utm_offset;
   return des;
 }
 cv::Vec3d GeoMapMetaData::world2utm(const cv::Vec3d &src) const

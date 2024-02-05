@@ -7,6 +7,15 @@
 
 using namespace tuw_object_map;
 
+void onMouse(int event, int x, int y, int, void *userdata)
+{
+  if (event == cv::EVENT_LBUTTONDOWN){
+    cv::Vec3d lla = static_cast<tuw_object_map::GeoMapMetaData *>(userdata)->m2g(cv::Point(x,y));
+    cv::Vec2d world = static_cast<tuw_object_map::GeoMapMetaData *>(userdata)->map2world(cv::Vec2d(x,y));
+    printf("map: [%5d, %5d] px --> world: [%6.3fm, %6.3fm] --> geo: [%10.8f°, %10.8f°, %10.8fm]\n", x, y, world[0], world[1], lla[0], lla[1], lla[2]);
+  }
+}
+
 std::vector<double> read_geo_info_jgw(const std::string &filename)
 {
   std::vector<double> numbers;
@@ -37,9 +46,9 @@ void ObjectMap::line(cv::Vec3d start, cv::Vec3d end, double bondary, double enfl
     cv::Point a = info_.g2m(start);
     cv::Point b = info_.g2m(end);
     int thickness_bondary = bondary * 2. / info_.resolution;
-    cv::line(img_costmap_, a, b, cv::Scalar(100), thickness_bondary);
+    cv::line(img_costmap_, a, b, cv::Scalar(CELL_FREE), thickness_bondary);
     int thickness_enflation = enflation * 2. / info_.resolution;
-    cv::line(img_costmap_, a, b, cv::Scalar(0), thickness_enflation);
+    cv::line(img_costmap_, a, b, cv::Scalar(CELL_OCCUPIED), thickness_enflation);
     if (!img_map_.empty())
       cv::line(img_map_, a, b, cv::Scalar(0, 0xFF, 0), 1);
 }
@@ -47,9 +56,11 @@ void ObjectMap::line(cv::Vec3d start, cv::Vec3d end, double bondary, double enfl
 
 void ObjectMap::imshow(int delay){
   cv::imshow("costmap", img_costmap_);
+  cv::setMouseCallback("costmap", onMouse, &info_);
   if (!img_map_.empty())
   {
     cv::imshow("img_map", img_map_);
+    cv::setMouseCallback("img_map", onMouse, &info_);
   }
   cv::waitKey(delay);
 }
@@ -59,10 +70,11 @@ cv::Mat &ObjectMap::process()
   return img_costmap_;
 }
 
-void ObjectMap::init_map(double latitude, double longitude, double altitude, bool center_origin){
-  info_.init(latitude, longitude, altitude, center_origin);
-  img_costmap_ = cv::Mat(info_.size.height, info_.size.width, CV_8S, cv::Scalar(0x80));
+void ObjectMap::init_map(double latitude, double longitude, double altitude){
+  info_.init(latitude, longitude, altitude);
+  img_costmap_ = cv::Mat(info_.size.height, info_.size.width, CV_8U, cv::Scalar(CELL_UNKNOWN));
 }
+
 void ObjectMap::init_map(const std::string &mapimage)
 {
   std::string mapimage_filename = mapimage + std::string("mapimage.jpg");
@@ -73,6 +85,6 @@ void ObjectMap::init_map(const std::string &mapimage)
   info_.resolution = numbers[0];
   int zone = 33;
   bool northp = true;
-  info_.init(numbers[4], numbers[5], 0.0, zone, northp, false);
-  img_costmap_ = cv::Mat(info_.size.height, info_.size.width, CV_8S, cv::Scalar(0x80));
+  info_.init(numbers[4], numbers[5], 0.0, zone, northp);
+  img_costmap_ = cv::Mat(info_.size.height, info_.size.width, CV_8U, cv::Scalar(CELL_UNKNOWN));
 }

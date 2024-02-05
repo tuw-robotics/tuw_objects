@@ -10,6 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tuw_geometry REQUIRED)
 find_package(tuw_geometry_msgs REQUIRED)
@@ -34,6 +36,8 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "tf2"
+  "tf2_ros"
   "nav_msgs"
   "tuw_geometry"
   "tuw_geometry_msgs"
@@ -54,6 +58,8 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "tf2"
+  "tf2_ros"
   "nav_msgs"
   "tuw_geometry"
   "tuw_geometry_msgs"
@@ -74,6 +80,8 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "tf2"
+  "tf2_ros"
   "nav_msgs"
   "tuw_geometry"
   "tuw_geometry_msgs"
@@ -94,6 +102,8 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "tf2"
+  "tf2_ros"
   "nav_msgs"
   "tuw_geometry"
   "tuw_geometry_msgs"

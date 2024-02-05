@@ -12,19 +12,24 @@ namespace tuw_object_map
   class ObjectMap
   {
   public:
+    static const uint8_t CELL_FREE = 0xFF;
+    static const uint8_t CELL_UNKNOWN = 0x80;
+    static const uint8_t CELL_OCCUPIED = 0x00;
     ObjectMap();
     cv::Mat &process();
     void init_map(const std::string &mapimage);
-    void init_map(double latitude, double longitude, double altitude, bool center_origin);
+    void init_map(double latitude, double longitude, double altitude);
     void line(cv::Vec3d start, cv::Vec3d end, double bondary, double enflation);
-    const cv::Mat &object_image();
+    cv::Mat &img_map(){
+      return img_map_;
+    }
     GeoMapMetaData &info(){
       return info_;
     }
     void imshow(int delay = 10);
   private:
     GeoMapMetaData info_;
-    cv::Mat_<int8_t> img_costmap_;
+    cv::Mat_<uint8_t> img_costmap_;
     cv::Mat img_map_;
   };
 }

@@ -29,8 +29,7 @@ int main(int argc, char **argv)
 
   info.size = cv::Size(600, 400);
   info.resolution = 1. / 5.0;
-  info.rotation = 0;
-  info.init(46.8015409, 15.8382641, 338.917, true);
+  info.init(46.8015409, 15.8382641, 338.917);
 
   std::cout << info.info_map() << std::endl;
   std::cout << info.info_geo() << std::endl;
