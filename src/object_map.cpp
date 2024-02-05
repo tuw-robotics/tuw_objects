@@ -45,13 +45,13 @@ void ObjectMap::line(cv::Vec3d start, cv::Vec3d end, double bondary, double enfl
 }
 
 
-void ObjectMap::imshow(){
+void ObjectMap::imshow(int delay){
   cv::imshow("costmap", img_costmap_);
   if (!img_map_.empty())
   {
     cv::imshow("img_map", img_map_);
   }
-  cv::waitKey(10);
+  cv::waitKey(delay);
 }
 
 cv::Mat &ObjectMap::process()
@@ -59,8 +59,8 @@ cv::Mat &ObjectMap::process()
   return img_costmap_;
 }
 
-void ObjectMap::init_map(double latitude, double longitude, double altitude){
-  info_.init(latitude, longitude, altitude, true);
+void ObjectMap::init_map(double latitude, double longitude, double altitude, bool center_origin){
+  info_.init(latitude, longitude, altitude, center_origin);
   img_costmap_ = cv::Mat(info_.size.height, info_.size.width, CV_8S, cv::Scalar(0x80));
 }
 void ObjectMap::init_map(const std::string &mapimage)

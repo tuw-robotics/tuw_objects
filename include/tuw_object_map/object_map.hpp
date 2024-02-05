@@ -15,13 +15,13 @@ namespace tuw_object_map
     ObjectMap();
     cv::Mat &process();
     void init_map(const std::string &mapimage);
-    void init_map(double latitude, double longitude, double altitude);
+    void init_map(double latitude, double longitude, double altitude, bool center_origin);
     void line(cv::Vec3d start, cv::Vec3d end, double bondary, double enflation);
     const cv::Mat &object_image();
     GeoMapMetaData &info(){
       return info_;
     }
-    void imshow();
+    void imshow(int delay = 10);
   private:
     GeoMapMetaData info_;
     cv::Mat_<int8_t> img_costmap_;

@@ -60,7 +60,7 @@ void ObjectMapNode::callback_object_map(
     costmap.data[i] = img_costmap.data[i];
   }
   pub_object_costmap_->publish(costmap);
-  
+  object_map_.imshow(100);
 }
 
 void ObjectMapNode::callback_timer() { 
@@ -88,8 +88,7 @@ void ObjectMapNode::declare_parameters()
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "mapimage folder";
-    this->declare_parameter<std::string>("mapimage_folder", "/home/markus/Downloads/mapimage/", descriptor);
-    //this->declare_parameter<std::string>("mapimage_folder", "", descriptor);
+    this->declare_parameter<std::string>("mapimage_folder", "", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -131,18 +130,23 @@ void ObjectMapNode::declare_parameters()
     descriptor.description = "origin altitude";
     this->declare_parameter<double>("origin_altitude", 338.917, descriptor);
   }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "center origin otherwise the orbition will be on cell 0,0";
+    this->declare_parameter<bool>("center_origin", true, descriptor);
+  }
 }
 
 
 void ObjectMapNode::read_parameters()
 {
   double latitude, longitude, altitude;
+  bool center_origin;
   this->get_parameter<std::string>("map_topic", map_topic_);
   RCLCPP_INFO(this->get_logger(), "map_topic: %s", map_topic_.c_str());
   this->get_parameter<std::string>("frame_id", frame_id_);
   RCLCPP_INFO(this->get_logger(), "frame_id: %s", frame_id_.c_str());
   this->get_parameter<std::string>("mapimage_folder", mapimage_folder_);
-  RCLCPP_INFO(this->get_logger(), "mapimage_folder: %s", mapimage_folder_.c_str());
   this->get_parameter<std::string>("json_file", json_file_);
   RCLCPP_INFO(this->get_logger(), "json_file: %s", json_file_.c_str());
   this->get_parameter<double>("resolution", object_map_.info().resolution);
@@ -153,9 +157,13 @@ void ObjectMapNode::read_parameters()
   this->get_parameter<double>("origin_latitude", latitude);
   this->get_parameter<double>("origin_longitude",longitude);
   this->get_parameter<double>("origin_altitude", altitude);
+  this->get_parameter<bool>("center_origin", center_origin);
   if (mapimage_folder_.empty()){
-    object_map_.init_map(latitude, longitude, altitude);
+    RCLCPP_INFO(this->get_logger(), "center_origin: %s", (center_origin?"true":"false"));
+    object_map_.init_map(latitude, longitude, altitude, center_origin);
   } else {
+    RCLCPP_INFO(this->get_logger(), "mapimage_folder: %s", mapimage_folder_.c_str());
+    RCLCPP_INFO(this->get_logger(), "using mapimage parameter, arguments are overwritten");
     object_map_.init_map(mapimage_folder_);
   }
   RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_map().c_str());

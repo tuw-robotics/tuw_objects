@@ -43,14 +43,14 @@ ament_target_dependencies(
   "GeographicLib"
 )
 
-add_executable(generate_object_costmap src/standalone_object_map.cpp src/object_map_node.cpp)
-target_include_directories(generate_object_costmap PUBLIC
+add_executable(object_map_node src/standalone_object_map.cpp src/object_map_node.cpp)
+target_include_directories(object_map_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(generate_object_costmap PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_link_libraries(generate_object_costmap object_map )
+target_compile_features(object_map_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_link_libraries(object_map_node object_map )
 ament_target_dependencies(
-  generate_object_costmap
+  object_map_node
   "rclpy"
   "rclcpp"
   "rclcpp_components"
@@ -106,7 +106,7 @@ ament_target_dependencies(
 install(TARGETS 
   example_object_map
   example_geo_map
-  generate_object_costmap
+  object_map_node
   object_map
   DESTINATION lib/${PROJECT_NAME})
 
