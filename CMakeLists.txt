@@ -20,9 +20,11 @@ find_package(tuw_json REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3)
-find_package (GeographicLib 2.0 REQUIRED)
-include_directories (${GeographicLib_INCLUDE_DIRS})
 
+
+# Geographiclib installs FindGeographicLib.cmake to this non-standard location
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
+find_package(GeographicLib REQUIRED)
 
 
 
@@ -46,6 +48,8 @@ ament_target_dependencies(
   "OpenCV"
   "GeographicLib"
 )
+target_link_libraries(object_map ${GeographicLib_LIBRARIES})
+
 
 add_executable(object_map_node src/standalone_object_map.cpp src/object_map_node.cpp)
 target_include_directories(object_map_node PUBLIC
@@ -66,7 +70,6 @@ ament_target_dependencies(
   "tuw_object_map_msgs"
   "tuw_json"
   "OpenCV"
-  "GeographicLib"
 )
 
 add_executable(example_object_map src/example/main_object_map.cpp)
