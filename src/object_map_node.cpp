@@ -1,6 +1,8 @@
 #include "tuw_object_map/object_map_node.hpp"
 #include <tuw_object_map_msgs/object_map_json.hpp>
 #include <tuw_json/json.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <filesystem>
 
 using std::placeholders::_1;
 
@@ -12,6 +14,13 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   declare_parameters();
   read_parameters();
 
+  if (!debug_folder_.empty())
+  {
+    if (debug_folder_.back() != '/') 
+      debug_folder_ += '/';
+    if (!std::filesystem::is_directory(debug_folder_) || !std::filesystem::exists(debug_folder_))
+      std::filesystem::create_directories(debug_folder_); // create src folder
+  }
   pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_costmap", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
   pub_occupancy_grid_img_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_img_map", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
@@ -32,48 +41,20 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   timer_ = create_wall_timer(100ms, std::bind(&ObjectMapNode::callback_timer, this));
 }
 
+
 void ObjectMapNode::callback_object_map(
     const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "I received a map");
-
-  for (const auto &o : msg->objects)
-  {
-    cv::Vec3d p0, p1;
-    if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
-    {
-      if (o.geo_points.size() > 0)
-      {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-      }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
-      {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        double enflation = o.enflation_radius[i];
-        double bondary = o.bondary_radius[i];
-        object_map_.line(p0, p1, bondary, enflation);
-        p0 = p1;
-      }
-    }else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT) ||
-              (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_STREET) ||
-              (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_GRAVEL))
-    {
-      if (o.geo_points.size() > 0)
-      {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-      }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
-      {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        double enflation = o.enflation_radius[i];
-        double bondary = o.bondary_radius[i];
-        object_map_.line(p0, p1, bondary, enflation);
-        p0 = p1;
-      }
-    }
-  }
+  
+  draw(msg);
 
   cv::Mat &img_src = object_map_.process();
+
+  if (!debug_folder_.empty())
+  {
+    cv::imwrite(debug_folder_ + "object_map.png", img_src);
+  }
 
   occupancy_map_ = std::make_shared<nav_msgs::msg::OccupancyGrid>();
   occupancy_map_->header.frame_id = frame_object_map_;
@@ -198,6 +179,86 @@ void ObjectMapNode::callback_timer()
   }
 }
 
+void ObjectMapNode::draw(tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg){
+
+  /// Frist draw free space
+  for (const auto &o : msg->objects)
+  {
+    cv::Vec3d p0, p1;
+    if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
+    {
+      if (o.geo_points.size() > 0)
+      {
+        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+        object_map_.line(p0, p0, ObjectMap::CELL_FREE, o.bondary_radius[0]);
+      }
+      for (size_t i = 1; i < o.geo_points.size(); i++)
+      {
+        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+        object_map_.line(p0, p1, ObjectMap::CELL_FREE, o.bondary_radius[i]);
+        p0 = p1;
+      }
+    }
+    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT) ||
+             (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_STREET) ||
+             (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_GRAVEL))
+    {
+      if (o.geo_points.size() > 0)
+      {
+        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+        object_map_.line(p0, p0, ObjectMap::CELL_FREE, o.bondary_radius[0]);
+      }
+      for (size_t i = 1; i < o.geo_points.size(); i++)
+      {
+        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+        object_map_.line(p0, p1, ObjectMap::CELL_FREE, o.bondary_radius[i]);
+        p0 = p1;
+      }
+    }
+  }
+  /// Frist draw occupied space
+  for (const auto &o : msg->objects)
+  {
+    cv::Vec3d p0, p1;
+    if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
+    {
+      if (o.geo_points.size() > 0)
+      {
+        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+        object_map_.line(p0, p0, ObjectMap::CELL_OCCUPIED, o.enflation_radius[0]);
+      }
+      for (size_t i = 1; i < o.geo_points.size(); i++)
+      {
+        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+        object_map_.line(p0, p1, ObjectMap::CELL_OCCUPIED, o.enflation_radius[i]);
+        p0 = p1;
+      }
+    }
+    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_OBSTACLE_TREE) )
+    {
+      cv::Vec3d p0, p1;
+      if (o.geo_points.size() > 0)
+      {
+        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+        object_map_.line(p0, p0, ObjectMap::CELL_OCCUPIED, o.enflation_radius[0]);
+
+      }
+      for (size_t i = 1; i < o.geo_points.size(); i++)
+      {
+        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+        object_map_.line(p0, p1, ObjectMap::CELL_OCCUPIED, o.enflation_radius[i]);
+        p0 = p1;
+      }
+    }
+  }
+  /// fill corners (for stage map)
+  object_map_.img_costmap()(0,0) = ObjectMap::CELL_OCCUPIED;
+  object_map_.img_costmap()(object_map_.img_costmap().rows-1,0) = ObjectMap::CELL_OCCUPIED;
+  object_map_.img_costmap()(object_map_.img_costmap().rows-1,object_map_.img_costmap().cols-1) = ObjectMap::CELL_OCCUPIED;
+  object_map_.img_costmap()(0,object_map_.img_costmap().cols-1) = ObjectMap::CELL_OCCUPIED;
+}
+
+
 void ObjectMapNode::declare_parameters()
 {
   {
@@ -285,11 +346,18 @@ void ObjectMapNode::declare_parameters()
     descriptor.description = "on true the maps are published in relative to utm, otherwise with a zero link to frame_map";
     this->declare_parameter<bool>("publish_utm", false, descriptor);
   }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "debug folder, if set it stores debug information and images there";
+    this->declare_parameter<std::string>("debug_folder", "/tmp/ros/object_map", descriptor);
+  }
 }
 
 void ObjectMapNode::read_parameters()
 {
   double latitude, longitude, altitude;
+  this->get_parameter<std::string>("debug_folder", debug_folder_);
+  RCLCPP_INFO(this->get_logger(), "debug_folder: '%s', if set it stores debug images there!", debug_folder_.c_str());
   this->get_parameter<std::string>("map_topic", map_topic_);
   RCLCPP_INFO(this->get_logger(), "map_topic: %s", map_topic_.c_str());
   this->get_parameter<bool>("show_map", show_map_);

@@ -31,6 +31,8 @@ namespace tuw_object_map
     rclcpp::TimerBase::SharedPtr timer_;
     // callbacks
     void callback_timer();
+    
+    void draw(const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg);
 
     nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_map_;
     nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_img_;
@@ -43,6 +45,7 @@ namespace tuw_object_map
     std::string frame_satellit_map_;
     std::string mapimage_folder_;
     std::string json_file_;
+    std::string debug_folder_;
     bool show_map_;
     void declare_parameters();
     void read_parameters();
