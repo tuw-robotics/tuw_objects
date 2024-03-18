@@ -5,6 +5,7 @@
 #include <filesystem>
 
 using std::placeholders::_1;
+using std::placeholders::_2;
 
 using namespace tuw_object_map;
 
@@ -16,7 +17,7 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
 
   if (!debug_folder_.empty())
   {
-    if (debug_folder_.back() != '/') 
+    if (debug_folder_.back() != '/')
       debug_folder_ += '/';
     if (!std::filesystem::is_directory(debug_folder_) || !std::filesystem::exists(debug_folder_))
       std::filesystem::create_directories(debug_folder_); // create src folder
@@ -32,21 +33,27 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   }
   else
   {
-    tuw_object_map_msgs::msg::ObjectMap::SharedPtr map = std::make_shared<tuw_object_map_msgs::msg::ObjectMap>();
-    tuw_json::fromJson(tuw_json::read(json_file_, "object_map"), *map);
-    callback_object_map(map);
-    callback_timer();
+    load_map(json_file_);
   }
+
   using namespace std::chrono_literals;
   timer_ = create_wall_timer(100ms, std::bind(&ObjectMapNode::callback_timer, this));
+
+  this->load_map_service_ = this->create_service<tuw_object_map_msgs::srv::LoadMap>("load_map", std::bind(&ObjectMapNode::callback_load_map, this, _1, _2));
 }
 
+void ObjectMapNode::load_map(const std::string &filename) {
+    tuw_object_map_msgs::msg::ObjectMap::SharedPtr map = std::make_shared<tuw_object_map_msgs::msg::ObjectMap>();
+    tuw_json::fromJson(tuw_json::read(filename, "object_map"), *map);
+    callback_object_map(map);
+    callback_timer();
+}
 
 void ObjectMapNode::callback_object_map(
     const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "I received a map");
-  
+
   draw(msg);
 
   cv::Mat &img_src = object_map_.process();
@@ -116,6 +123,20 @@ void ObjectMapNode::callback_object_map(
   publish_transforms();
 }
 
+void ObjectMapNode::callback_load_map(const std::shared_ptr<tuw_object_map_msgs::srv::LoadMap::Request> request, std::shared_ptr<tuw_object_map_msgs::srv::LoadMap::Response> response)
+{
+  RCLCPP_INFO(this->get_logger(), "LoadMap service called!");
+
+  if (!request->map_url.empty())
+  {
+    load_map(request->map_url);
+    response->result = tuw_object_map_msgs::srv::LoadMap::Response::RESULT_SUCCESS;
+    response->map = *occupancy_map_;
+  } else {
+      response->result = tuw_object_map_msgs::srv::LoadMap::Response::RESULT_UNDEFINED_FAILURE;
+  }
+}
+
 void ObjectMapNode::publish_transforms()
 {
   if (publish_utm_)
@@ -179,7 +200,8 @@ void ObjectMapNode::callback_timer()
   }
 }
 
-void ObjectMapNode::draw(tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg){
+void ObjectMapNode::draw(tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
+{
 
   /// Frist draw free space
   for (const auto &o : msg->objects)
@@ -234,14 +256,13 @@ void ObjectMapNode::draw(tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg){
         p0 = p1;
       }
     }
-    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_OBSTACLE_TREE) )
+    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_OBSTACLE_TREE))
     {
       cv::Vec3d p0, p1;
       if (o.geo_points.size() > 0)
       {
         p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
         object_map_.line(p0, p0, ObjectMap::CELL_OCCUPIED, o.enflation_radius[0]);
-
       }
       for (size_t i = 1; i < o.geo_points.size(); i++)
       {
@@ -252,12 +273,11 @@ void ObjectMapNode::draw(tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg){
     }
   }
   /// fill corners (for stage map)
-  object_map_.img_costmap()(0,0) = ObjectMap::CELL_OCCUPIED;
-  object_map_.img_costmap()(object_map_.img_costmap().rows-1,0) = ObjectMap::CELL_OCCUPIED;
-  object_map_.img_costmap()(object_map_.img_costmap().rows-1,object_map_.img_costmap().cols-1) = ObjectMap::CELL_OCCUPIED;
-  object_map_.img_costmap()(0,object_map_.img_costmap().cols-1) = ObjectMap::CELL_OCCUPIED;
+  object_map_.img_costmap()(0, 0) = ObjectMap::CELL_OCCUPIED;
+  object_map_.img_costmap()(object_map_.img_costmap().rows - 1, 0) = ObjectMap::CELL_OCCUPIED;
+  object_map_.img_costmap()(object_map_.img_costmap().rows - 1, object_map_.img_costmap().cols - 1) = ObjectMap::CELL_OCCUPIED;
+  object_map_.img_costmap()(0, object_map_.img_costmap().cols - 1) = ObjectMap::CELL_OCCUPIED;
 }
-
 
 void ObjectMapNode::declare_parameters()
 {
