@@ -45,6 +45,8 @@ namespace tuw_object_map
     ObjectMap object_map_;
     std::string map_topic_;
     bool publish_utm_;
+    bool auto_mansfen_;
+    double auto_mansfen_border_;
     std::string frame_map_;
     std::string frame_utm_;
     std::string frame_object_map_;

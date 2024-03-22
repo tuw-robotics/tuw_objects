@@ -54,6 +54,48 @@ void ObjectMapNode::callback_object_map(
 {
   RCLCPP_INFO(this->get_logger(), "I received a map");
 
+  if(auto_mansfen_){
+
+    GeoMapMetaData info_;
+    RCLCPP_INFO(this->get_logger(), "Updating map mansfen e.g. map origin and map size");
+    cv::Vec3d p_tl, p_br; /// top left and bottom right
+    int nr_of_points = 0;
+    for (const auto &o : msg->objects){
+      for (const auto &g : o.geo_points){
+        if(nr_of_points == 0){
+          info_.init(g.latitude, g.longitude, g.altitude);
+          cv::Vec3d p_utm = info_.lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
+          p_tl = p_utm; /// top left
+          p_br = p_utm;  /// bottom right
+        } 
+        cv::Vec3d p_utm = info_.lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
+        if(p_tl[0] < p_utm[0]) p_tl[0] = p_utm[0];
+        if(p_tl[1] > p_utm[1]) p_tl[1] = p_utm[1];
+        if(p_tl[2] < p_utm[2]) p_tl[2] = p_utm[2];
+
+        if(p_br[0] > p_utm[0]) p_br[0] = p_utm[0];
+        if(p_br[1] < p_utm[1]) p_br[1] = p_utm[1];
+        if(p_br[2] > p_utm[2]) p_br[2] = p_utm[2];
+        nr_of_points++;
+      }
+    }
+    /// adding border to outer points
+    p_tl = p_tl + cv::Vec3d(+auto_mansfen_border_, -auto_mansfen_border_, +auto_mansfen_border_);
+    p_br = p_br + cv::Vec3d(-auto_mansfen_border_, +auto_mansfen_border_, -auto_mansfen_border_);
+
+    /// compute map size
+    object_map_.info().size.width = fabs((p_tl[0] - p_br[0]))/object_map_.info().resolution;
+    object_map_.info().size.height = fabs((p_tl[1] - p_br[1]))/object_map_.info().resolution;
+
+    /// compute origin depnding on the map offset 
+    /// ToDo check if the offset works
+    cv::Vec3d g_origin = info_.utm2lla(p_br + cv::Vec3d(object_map_.info().origin.x(), object_map_.info().origin.y(), 0));
+    object_map_.init_map(g_origin[0], g_origin[1], g_origin[2]);
+    RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_map().c_str());
+    RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_geo().c_str());
+
+  }
+
   draw(msg);
 
   cv::Mat &img_src = object_map_.process();
@@ -328,6 +370,16 @@ void ObjectMapNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "On true, the map size and origin are computed automatically.";
+    this->declare_parameter<bool>("auto_mansfen", false, descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "border on auto_mansfen in meters, only in combination with auto_mansfen:=ture used";
+    this->declare_parameter<double>("auto_mansfen_border", 10, descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "map width [cells]";
     this->declare_parameter<int>("map_width", 1000, descriptor);
   }
@@ -394,6 +446,9 @@ void ObjectMapNode::read_parameters()
   this->get_parameter<std::string>("json_file", json_file_);
   RCLCPP_INFO(this->get_logger(), "json_file: %s", json_file_.c_str());
   this->get_parameter<double>("resolution", object_map_.info().resolution);
+  this->get_parameter<bool>("auto_mansfen", auto_mansfen_);
+  RCLCPP_INFO(this->get_logger(), "auto_mansfen: %s", (auto_mansfen_ ? "true" : "false"));
+  this->get_parameter<double>("auto_mansfen_border", auto_mansfen_border_);
   this->get_parameter<int>("map_width", object_map_.info().size.width);
   this->get_parameter<int>("map_height", object_map_.info().size.height);
   this->get_parameter<double>("map_origin_x", object_map_.info().origin.x());
