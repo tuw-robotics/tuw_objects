@@ -28,7 +28,7 @@ find_package(GeographicLib REQUIRED)
 
 
 
-add_library(object_map src/object_map.cpp src/geo_map.cpp)
+add_library(object_map src/object_map.cpp)
 target_compile_features(object_map PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 target_include_directories(object_map PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

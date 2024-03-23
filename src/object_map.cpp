@@ -11,8 +11,8 @@ void onMouse(int event, int x, int y, int, void *userdata)
 {
   if (event == cv::EVENT_LBUTTONDOWN)
   {
-    cv::Vec3d lla = static_cast<tuw_object_map::GeoMapMetaData *>(userdata)->m2g(cv::Point(x, y));
-    cv::Vec2d world = static_cast<tuw_object_map::GeoMapMetaData *>(userdata)->map2world(cv::Vec2d(x, y));
+    cv::Vec3d lla = static_cast<tuw::GeoMapMetaData *>(userdata)->m2g(cv::Point(x, y));
+    cv::Vec2d world = static_cast<tuw::GeoMapMetaData *>(userdata)->map2world(cv::Vec2d(x, y));
     printf("map: [%5d, %5d] px --> world: [%6.3fm, %6.3fm] --> {\"latitude\":%10.8f,\"longitude\":%10.8f,\"altitude\":%6.3f}\n", x, y, world[0], world[1], lla[0], lla[1], lla[2]);
   }
 }

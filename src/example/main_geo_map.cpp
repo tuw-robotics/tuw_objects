@@ -2,11 +2,11 @@
 #include <iostream>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include <tuw_object_map/geo_map.hpp>
+#include <tuw_geometry/geo_map.hpp>
 
 void onMouse(int event, int x, int y, int, void *userdata)
 {
-  tuw_object_map::GeoMapMetaData *info = (tuw_object_map::GeoMapMetaData *)userdata;
+  tuw::GeoMapMetaData *info = (tuw::GeoMapMetaData *)userdata;
   cv::Vec3d lla = info->m2g(cv::Point(x,y));
   if (event == cv::EVENT_LBUTTONDOWN)
   {
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 
   printf("hello world tuw_object_map package\n");
   printf("example: geo_map\n");
-  tuw_object_map::GeoMapMetaData info;
+  tuw::GeoMapMetaData info;
 
   info.size = cv::Size(600, 400);
   info.resolution = 1. / 5.0;

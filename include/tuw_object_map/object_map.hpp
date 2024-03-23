@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 #include <opencv2/core/core.hpp>
-#include <tuw_object_map/geo_map.hpp>
+#include <tuw_geometry/geo_map.hpp>
 
 namespace tuw_object_map
 {
@@ -33,14 +33,14 @@ namespace tuw_object_map
     {
       return img_costmap_;
     }
-    GeoMapMetaData &info()
+    tuw::GeoMapMetaData &info()
     {
       return info_;
     }
     void imshow(int delay = 10);
 
   private:
-    GeoMapMetaData info_;
+    tuw::GeoMapMetaData info_;
     cv::Mat_<uint8_t> img_costmap_;
     cv::Mat img_map_;
   };

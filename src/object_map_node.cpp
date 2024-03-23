@@ -56,7 +56,7 @@ void ObjectMapNode::callback_object_map(
 
   if(auto_mansfen_){
 
-    GeoMapMetaData info_;
+    tuw::GeoMapMetaData info_;
     RCLCPP_INFO(this->get_logger(), "Updating map mansfen e.g. map origin and map size");
     cv::Vec3d p_tl, p_br; /// top left and bottom right
     int nr_of_points = 0;
