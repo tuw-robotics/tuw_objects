@@ -1,0 +1,16 @@
+##enable named panes in tmux.conf with:
+#set -g pane-border-format "#{pane_index} #{pane_title}"
+#set -g pane-border-status bottom
+
+name: pioneer3dx
+#root: /home/markus/projects/tuw-ros
+
+windows:
+  - maps:
+      panes: 
+        - rviz: 
+          - printf '\033]2;%s\033\\' 'rviz'
+          - ros2 run rviz2 rviz2 -d ./ws02/src/tuw_object_map/config/object_map.rviz
+        - object_map: 
+          - printf '\033]2;%s\033\\' 'map'
+          - ros2 run tuw_object_map object_map_node --ros-args  -p json_file:=./ws02/src/tuw_greenhive/config/object_map/starden-2024-01-14.json -p mapimage_folder:=./ws02/src/tuw_greenhive/res/greenhive-straden/satelittenbild/01/ -p show_map:=false
