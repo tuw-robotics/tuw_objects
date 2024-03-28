@@ -16,6 +16,7 @@ find_package(nav_msgs REQUIRED)
 find_package(tuw_geometry REQUIRED)
 find_package(tuw_geometry_msgs REQUIRED)
 find_package(tuw_object_map_msgs REQUIRED)
+find_package(geographic_msgs REQUIRED)
 find_package(tuw_json REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
@@ -68,6 +69,29 @@ ament_target_dependencies(
   "tuw_geometry"
   "tuw_geometry_msgs"
   "tuw_object_map_msgs"
+  "tuw_json"
+  "OpenCV"
+)
+
+
+add_executable(geo_map_node src/standalone_geo_map.cpp src/geo_map_node.cpp)
+target_include_directories(geo_map_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(geo_map_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_link_libraries(geo_map_node object_map )
+ament_target_dependencies(
+  geo_map_node
+  "rclpy"
+  "rclcpp"
+  "rclcpp_components"
+  "tf2"
+  "tf2_ros"
+  "nav_msgs"
+  "tuw_geometry"
+  "tuw_geometry_msgs"
+  "tuw_object_map_msgs"
+  "geographic_msgs"
   "tuw_json"
   "OpenCV"
 )
@@ -140,6 +164,7 @@ ament_target_dependencies(
 install(TARGETS 
   example_object_map
   example_geo_map
+  geo_map_node
   object_map_node
   object_map
   geo_json_node
