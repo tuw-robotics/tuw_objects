@@ -30,6 +30,7 @@ namespace tuw_geo_map
     void callback_timer();
     void callback_geo_point();
 
+    nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_map_img_;
     tuw::GeoMapMetaData info_;
     std::string map_topic_;
     std::string frame_map_;
@@ -41,6 +42,8 @@ namespace tuw_geo_map
 
     void publish_transforms();
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+
+    void read_mapimage(const std::string &mapimage);
   };
 }
 #endif // TUW_GEO_MAP__GEO_MAP_NODE_HPP_
