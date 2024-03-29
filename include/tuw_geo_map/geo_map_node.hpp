@@ -19,10 +19,12 @@ namespace tuw_geo_map
     GeoMapNode(const std::string &node_name);
 
   private:
-    rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::TimerBase::SharedPtr timer_loop_;
+    rclcpp::TimerBase::SharedPtr timer_parameters_;
 
     rclcpp::Subscription<geographic_msgs::msg::GeoPose>::ConstSharedPtr sub_geo_pose_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_map_pose_;
+    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_map_img_;
 
     // callbacks
     void callback_timer();
@@ -32,6 +34,7 @@ namespace tuw_geo_map
     std::string map_topic_;
     std::string frame_map_;
     std::string frame_utm_;
+    std::string mapimage_folder_;
     bool publish_utm_;
     void declare_parameters();
     void read_parameters();
