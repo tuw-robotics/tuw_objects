@@ -22,12 +22,12 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
     if (!std::filesystem::is_directory(debug_folder_) || !std::filesystem::exists(debug_folder_))
       std::filesystem::create_directories(debug_folder_); // create src folder
   }
-  pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_costmap", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+  pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_map", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
   if (json_file_.empty())
   {
-    sub_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>("object_map", 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
+    sub_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>("objects", 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
   }
   else
   {
@@ -107,8 +107,8 @@ void ObjectMapNode::callback_object_map(
   occupancy_map_->info.width = img_src.cols;                       // Set your desired width
   occupancy_map_->info.height = img_src.rows;                      // Set your desired height
   occupancy_map_->info.resolution = object_map_.info().resolution; // Set your desired resolution
-  occupancy_map_->info.origin.position.x = object_map_.info().origin.x();
-  occupancy_map_->info.origin.position.y = object_map_.info().origin.y() - img_src.rows * object_map_.info().resolution;
+  occupancy_map_->info.origin.position.x = 0;
+  occupancy_map_->info.origin.position.y = 0;
   occupancy_map_->info.origin.position.z = 0;
   occupancy_map_->data.resize(occupancy_map_->info.width * occupancy_map_->info.height, 0);
 
@@ -311,8 +311,8 @@ void ObjectMapNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "border on auto_mansfen in meters, only in combination with auto_mansfen:=ture used";
-    this->declare_parameter<double>("auto_mansfen_border", 10, descriptor);
+    descriptor.description = "border in meters, on the created map";
+    this->declare_parameter<double>("map_border", 10, descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -367,11 +367,9 @@ void ObjectMapNode::read_parameters()
   this->get_parameter<std::string>("json_file", json_file_);
   RCLCPP_INFO(this->get_logger(), "json_file: %s", json_file_.c_str());
   this->get_parameter<double>("resolution", object_map_.info().resolution);
-  this->get_parameter<double>("auto_mansfen_border", map_border_);
+  this->get_parameter<double>("map_border", map_border_);
   this->get_parameter<double>("map_origin_latitude", map_origin_latitude_);
   this->get_parameter<double>("map_origin_longitude", map_origin_longitude_);
   this->get_parameter<double>("map_origin_altitude", map_origin_altitude_);
   this->get_parameter<bool>("publish_utm", publish_utm_);
-  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_map().c_str());
-  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_geo().c_str());
 }

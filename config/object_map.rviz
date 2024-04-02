@@ -6,9 +6,12 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Graph1/Topic1
+        - /SatelittMap1/Topic1
+        - /Map1
+        - /Map1/Topic1
+        - /TF1/Tree1
       Splitter Ratio: 0.5
-    Tree Height: 750
+    Tree Height: 532
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -48,76 +51,6 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 0.699999988079071
-      Class: rviz_default_plugins/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: true
-      Name: Map
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /object_costmap
-      Update Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /object_costmap_updates
-      Use Timestamp: false
-      Value: true
-    - Alpha: 0.699999988079071
-      Class: rviz_default_plugins/Map
-      Color Scheme: raw
-      Draw Behind: false
-      Enabled: true
-      Name: Map
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /object_img_map
-      Update Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /object_img_map_updates
-      Use Timestamp: false
-      Value: true
-    - Class: rviz_default_plugins/TF
-      Enabled: true
-      Frame Timeout: 15
-      Frames:
-        All Enabled: true
-        map:
-          Value: true
-        object_map:
-          Value: true
-        satellit_map:
-          Value: true
-        utm:
-          Value: true
-      Marker Scale: 1
-      Name: TF
-      Show Arrows: true
-      Show Axes: true
-      Show Names: false
-      Tree:
-        utm:
-          map:
-            {}
-          object_map:
-            {}
-          satellit_map:
-            {}
-      Update Interval: 0
-      Value: true
     - Axes Length: 1
       Axes Radius: 0.10000000149011612
       Class: tuw_graph_rviz_plugins/Graph
@@ -127,13 +60,13 @@ Visualization Manager:
       Edge Arrow Size: 0.10000000149011612
       Edges alpha: 1
       Edges color: 0; 255; 255
-      Edges overlay offset: 0.004999999888241291
+      Edges overlay offset: 0.10000000149011612
       Enabled: true
       Name: Graph
       Nodes ID color: 128; 0; 255
-      Nodes alpha: 0.5
+      Nodes alpha: 1
       Nodes color: 255; 0; 255
-      Nodes size: 0.5
+      Nodes size: 0.15000000596046448
       Path alpha: 1
       Path color: 0; 255; 0
       Show Path: true
@@ -145,10 +78,72 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /graph
       Value: true
+    - Alpha: 0.699999988079071
+      Class: rviz_default_plugins/Map
+      Color Scheme: raw
+      Draw Behind: false
+      Enabled: true
+      Name: SatelittMap
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /geo_map
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /geo_map_updates
+      Use Timestamp: false
+      Value: true
+    - Alpha: 0.699999988079071
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /object_map
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /object_map_updates
+      Use Timestamp: false
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+        map:
+          Value: true
+        object_map:
+          Value: true
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Tree:
+        map:
+          object_map:
+            {}
+      Update Interval: 0
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: map
+    Fixed Frame: object_map
     Frame Rate: 30
   Name: root
   Tools:
@@ -190,29 +185,34 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 0
-      Class: rviz_default_plugins/TopDownOrtho
+      Class: rviz_default_plugins/Orbit
+      Distance: 693.8804321289062
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
+      Focal Point:
+        X: 199.3496551513672
+        Y: -39.98799514770508
+        Z: -42.477691650390625
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 4.444980621337891
+      Pitch: 0.975398063659668
       Target Frame: <Fixed Frame>
-      Value: TopDownOrtho (rviz_default_plugins)
-      X: 103.96441650390625
-      Y: -33.538997650146484
+      Value: Orbit (rviz)
+      Yaw: 4.728583335876465
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1043
+  Height: 846
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000015600000377fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003b00000377000000c700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f0000036bfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a0056006900650077007300000000410000036b000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000078000000040fc0100000002fb0000000800540069006d00650100000000000007800000025300fffffffb0000000800540069006d00650100000000000004500000000000000000000006240000037700000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000156000002a6fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005f00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730100000041000002a6000000d000fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f000002a6fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000041000002a6000000af00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004b000000040fc0100000002fb0000000800540069006d00650100000000000004b00000025000fffffffb0000000800540069006d0065010000000000000450000000000000000000000354000002a600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -221,6 +221,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: false
-  Width: 1920
-  X: 1920
-  Y: 0
+  Width: 1200
+  X: 2343
+  Y: 45
