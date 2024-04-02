@@ -27,7 +27,6 @@ namespace tuw_object_map
     rclcpp::Service<tuw_object_map_msgs::srv::LoadMap>::SharedPtr load_map_service_;
 
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_occupancy_grid_map_;
-    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_occupancy_grid_img_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
     std::shared_ptr<std::thread> process_;
@@ -41,19 +40,18 @@ namespace tuw_object_map
     void load_map(const std::string &filename);
 
     nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_map_;
-    nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_img_;
     ObjectMap object_map_;
-    std::string map_topic_;
     bool publish_utm_;
-    bool auto_mansfen_;
-    double auto_mansfen_border_;
+    double map_border_;
     std::string frame_map_;
     std::string frame_utm_;
     std::string frame_object_map_;
-    std::string frame_satellit_map_;
-    std::string mapimage_folder_;
     std::string json_file_;
     std::string debug_folder_;
+    double map_origin_latitude_;
+    double map_origin_longitude_;
+    double map_origin_altitude_;
+
     bool show_map_;
     void declare_parameters();
     void read_parameters();

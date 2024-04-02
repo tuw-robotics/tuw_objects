@@ -23,13 +23,11 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
       std::filesystem::create_directories(debug_folder_); // create src folder
   }
   pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_costmap", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
-  pub_occupancy_grid_img_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_img_map", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
   if (json_file_.empty())
   {
-    sub_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>(
-        map_topic_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
+    sub_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>("object_map", 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
   }
   else
   {
@@ -54,47 +52,46 @@ void ObjectMapNode::callback_object_map(
 {
   RCLCPP_INFO(this->get_logger(), "I received a map");
 
-  if(auto_mansfen_){
 
-    tuw::GeoMapMetaData info_;
-    RCLCPP_INFO(this->get_logger(), "Updating map mansfen e.g. map origin and map size");
-    cv::Vec3d p_tl, p_br; /// top left and bottom right
-    int nr_of_points = 0;
-    for (const auto &o : msg->objects){
-      for (const auto &g : o.geo_points){
-        if(nr_of_points == 0){
-          info_.init(g.latitude, g.longitude, g.altitude);
-          cv::Vec3d p_utm = info_.lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
-          p_tl = p_utm; /// top left
-          p_br = p_utm;  /// bottom right
-        } 
+  tuw::GeoMapMetaData info_;
+  RCLCPP_INFO(this->get_logger(), "Updating map mansfen e.g. map origin and map size");
+  cv::Vec3d p_tl, p_br; /// top left and bottom right
+  int nr_of_points = 0;
+  for (const auto &o : msg->objects){
+    for (const auto &g : o.geo_points){
+      if(nr_of_points == 0){
+        info_.init(g.latitude, g.longitude, g.altitude);
         cv::Vec3d p_utm = info_.lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
-        if(p_tl[0] < p_utm[0]) p_tl[0] = p_utm[0];
-        if(p_tl[1] > p_utm[1]) p_tl[1] = p_utm[1];
-        if(p_tl[2] < p_utm[2]) p_tl[2] = p_utm[2];
+        p_tl = p_utm; /// top left
+        p_br = p_utm;  /// bottom right
+      } 
+      cv::Vec3d p_utm = info_.lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
+      if(p_tl[0] < p_utm[0]) p_tl[0] = p_utm[0];
+      if(p_tl[1] > p_utm[1]) p_tl[1] = p_utm[1];
+      if(p_tl[2] < p_utm[2]) p_tl[2] = p_utm[2];
 
-        if(p_br[0] > p_utm[0]) p_br[0] = p_utm[0];
-        if(p_br[1] < p_utm[1]) p_br[1] = p_utm[1];
-        if(p_br[2] > p_utm[2]) p_br[2] = p_utm[2];
-        nr_of_points++;
-      }
+      if(p_br[0] > p_utm[0]) p_br[0] = p_utm[0];
+      if(p_br[1] < p_utm[1]) p_br[1] = p_utm[1];
+      if(p_br[2] > p_utm[2]) p_br[2] = p_utm[2];
+      nr_of_points++;
     }
-    /// adding border to outer points
-    p_tl = p_tl + cv::Vec3d(+auto_mansfen_border_, -auto_mansfen_border_, +auto_mansfen_border_);
-    p_br = p_br + cv::Vec3d(-auto_mansfen_border_, +auto_mansfen_border_, -auto_mansfen_border_);
-
-    /// compute map size
-    object_map_.info().size.width = fabs((p_tl[0] - p_br[0]))/object_map_.info().resolution;
-    object_map_.info().size.height = fabs((p_tl[1] - p_br[1]))/object_map_.info().resolution;
-
-    /// compute origin depnding on the map offset 
-    /// ToDo check if the offset works
-    cv::Vec3d g_origin = info_.utm2lla(p_br + cv::Vec3d(object_map_.info().origin.x(), object_map_.info().origin.y(), 0));
-    object_map_.init_map(g_origin[0], g_origin[1], g_origin[2]);
-    RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_map().c_str());
-    RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_geo().c_str());
-
   }
+  /// adding border to outer points
+  p_tl = p_tl + cv::Vec3d(+map_border_, -map_border_, +map_border_);
+  p_br = p_br + cv::Vec3d(-map_border_, +map_border_, -map_border_);
+
+  /// compute map size
+  object_map_.info().size.width = fabs((p_tl[0] - p_br[0]))/object_map_.info().resolution;
+  object_map_.info().size.height = fabs((p_tl[1] - p_br[1]))/object_map_.info().resolution;
+
+  /// compute origin depnding on the map offset 
+  /// ToDo check if the offset works
+  cv::Vec3d g_origin = info_.utm2lla(p_br + cv::Vec3d(object_map_.info().origin.x(), object_map_.info().origin.y(), 0));
+  object_map_.init_map(g_origin[0], g_origin[1], g_origin[2]);
+  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_map().c_str());
+  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_geo().c_str());
+
+  
 
   draw(msg);
 
@@ -138,27 +135,6 @@ void ObjectMapNode::callback_object_map(
   }
 
   pub_occupancy_grid_map_->publish(*occupancy_map_);
-
-  if (!object_map_.img_map().empty())
-  {
-    cv::Mat &img_src = object_map_.img_map();
-    occupancy_img_ = std::make_shared<nav_msgs::msg::OccupancyGrid>();
-    occupancy_img_->header.frame_id = frame_satellit_map_;
-    occupancy_img_->info = occupancy_map_->info;
-    occupancy_img_->data.resize(occupancy_img_->info.width * occupancy_img_->info.height, 0);
-
-    cv::Mat_<int8_t> img_des = cv::Mat(img_src.size(), CV_8S, &occupancy_img_->data[0]);
-    for (int r = 0; r < img_des.rows; r++)
-    {
-      for (int c = 0; c < img_des.cols; c++)
-      {
-        cv::Vec<uint8_t, 3> &src = img_src.at<cv::Vec<uint8_t, 3>>(r, c);
-        int8_t &des = img_des.at<int8_t>(img_des.rows - r - 1, c);
-        des = (static_cast<int>(src[0]) + static_cast<int>(src[1]) + static_cast<int>(src[2])) / 3;
-      }
-    }
-    pub_occupancy_grid_img_->publish(*occupancy_img_);
-  }
 
   if (show_map_)
     object_map_.imshow(100);
@@ -207,22 +183,6 @@ void ObjectMapNode::publish_transforms()
     RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
     tf_broadcaster_->sendTransform(tf);
   }
-
-  if (!object_map_.img_map().empty())
-  {
-    geometry_msgs::msg::TransformStamped tf;
-    tf.header.stamp = this->get_clock()->now();
-    tf.header.frame_id = (publish_utm_ ? frame_utm_ : frame_map_);
-    tf.child_frame_id = frame_satellit_map_;
-    if (publish_utm_)
-    {
-      tf.transform.translation.x = object_map_.info().utm()[0];
-      tf.transform.translation.y = object_map_.info().utm()[1];
-      tf.transform.translation.z = object_map_.info().utm()[2];
-    }
-    tf_broadcaster_->sendTransform(tf);
-    RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
-  }
 }
 
 void ObjectMapNode::callback_timer()
@@ -230,10 +190,6 @@ void ObjectMapNode::callback_timer()
   // RCLCPP_INFO(this->get_logger(), "on_timer");
 
   publish_transforms();
-  if (occupancy_img_)
-  {
-    pub_occupancy_grid_img_->publish(*occupancy_img_);
-  }
   if (occupancy_map_)
   {
     pub_occupancy_grid_map_->publish(*occupancy_map_);
@@ -325,11 +281,6 @@ void ObjectMapNode::declare_parameters()
 {
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "map topic";
-    this->declare_parameter<std::string>("map_topic", "object_map", descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "shows the map in a opencv window";
     this->declare_parameter<bool>("show_map", true, descriptor);
   }
@@ -345,13 +296,8 @@ void ObjectMapNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "frame_object_map";
+    descriptor.description = "frame_object_map frame of the publische object map";
     this->declare_parameter<std::string>("frame_object_map", "object_map", descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "frame_satellit_map";
-    this->declare_parameter<std::string>("frame_satellit_map", "satellit_map", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -360,33 +306,13 @@ void ObjectMapNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "mapimage folder";
-    this->declare_parameter<std::string>("mapimage_folder", "", descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "resolution m/pix";
     this->declare_parameter<double>("resolution", 1. / 5.0, descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "On true, the map size and origin are computed automatically.";
-    this->declare_parameter<bool>("auto_mansfen", false, descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "border on auto_mansfen in meters, only in combination with auto_mansfen:=ture used";
     this->declare_parameter<double>("auto_mansfen_border", 10, descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "map width [cells]";
-    this->declare_parameter<int>("map_width", 1000, descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "map height [cells]";
-    this->declare_parameter<int>("map_height", 1000, descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -427,46 +353,25 @@ void ObjectMapNode::declare_parameters()
 
 void ObjectMapNode::read_parameters()
 {
-  double latitude, longitude, altitude;
   this->get_parameter<std::string>("debug_folder", debug_folder_);
   RCLCPP_INFO(this->get_logger(), "debug_folder: '%s', if set it stores debug images there!", debug_folder_.c_str());
-  this->get_parameter<std::string>("map_topic", map_topic_);
-  RCLCPP_INFO(this->get_logger(), "map_topic: %s", map_topic_.c_str());
   this->get_parameter<bool>("show_map", show_map_);
   RCLCPP_INFO(this->get_logger(), "show_map: %s", (show_map_ ? "true" : "false"));
   this->get_parameter<std::string>("frame_map", frame_map_);
   this->get_parameter<std::string>("frame_utm", frame_utm_);
   this->get_parameter<std::string>("frame_object_map", frame_object_map_);
-  this->get_parameter<std::string>("frame_satellit_map", frame_satellit_map_);
-  RCLCPP_INFO(this->get_logger(), "frame_map: %s, frame_utm: %s, frame_object_map: %s, frame_satellit_map: %s",
-              frame_map_.c_str(), frame_utm_.c_str(), frame_object_map_.c_str(), frame_satellit_map_.c_str());
+  RCLCPP_INFO(this->get_logger(), "frame_map: %s, frame_utm: %s, frame_object_map: %s",
+              frame_map_.c_str(), frame_utm_.c_str(), frame_object_map_.c_str());
   RCLCPP_INFO(this->get_logger(), "publish_utm: %s",
               (publish_utm_ ? " true -> maps are published in utm" : " false -> maps are published in map"));
-  this->get_parameter<std::string>("mapimage_folder", mapimage_folder_);
   this->get_parameter<std::string>("json_file", json_file_);
   RCLCPP_INFO(this->get_logger(), "json_file: %s", json_file_.c_str());
   this->get_parameter<double>("resolution", object_map_.info().resolution);
-  this->get_parameter<bool>("auto_mansfen", auto_mansfen_);
-  RCLCPP_INFO(this->get_logger(), "auto_mansfen: %s", (auto_mansfen_ ? "true" : "false"));
-  this->get_parameter<double>("auto_mansfen_border", auto_mansfen_border_);
-  this->get_parameter<int>("map_width", object_map_.info().size.width);
-  this->get_parameter<int>("map_height", object_map_.info().size.height);
-  this->get_parameter<double>("map_origin_x", object_map_.info().origin.x());
-  this->get_parameter<double>("map_origin_y", object_map_.info().origin.y());
-  this->get_parameter<double>("origin_latitude", latitude);
-  this->get_parameter<double>("origin_longitude", longitude);
-  this->get_parameter<double>("origin_altitude", altitude);
+  this->get_parameter<double>("auto_mansfen_border", map_border_);
+  this->get_parameter<double>("map_origin_latitude", map_origin_latitude_);
+  this->get_parameter<double>("map_origin_longitude", map_origin_longitude_);
+  this->get_parameter<double>("map_origin_altitude", map_origin_altitude_);
   this->get_parameter<bool>("publish_utm", publish_utm_);
-  if (mapimage_folder_.empty())
-  {
-    object_map_.init_map(latitude, longitude, altitude);
-  }
-  else
-  {
-    RCLCPP_INFO(this->get_logger(), "mapimage_folder: %s", mapimage_folder_.c_str());
-    RCLCPP_INFO(this->get_logger(), "using mapimage parameter, arguments are overwritten");
-    object_map_.init_map(mapimage_folder_);
-  }
   RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_map().c_str());
   RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_geo().c_str());
 }
