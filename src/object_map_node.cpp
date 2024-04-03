@@ -55,41 +55,42 @@ void ObjectMapNode::callback_object_map(
 
   tuw::GeoMapMetaData info_;
   RCLCPP_INFO(this->get_logger(), "Updating map mansfen e.g. map origin and map size");
-  cv::Vec3d p_tl, p_br; /// top left and bottom right
+  cv::Vec3d utm_tl, utm_br; /// top left and bottom right
   int nr_of_points = 0;
   for (const auto &o : msg->objects){
     for (const auto &g : o.geo_points){
       if(nr_of_points == 0){
         info_.init(g.latitude, g.longitude, g.altitude);
         cv::Vec3d p_utm = info_.lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
-        p_tl = p_utm; /// top left
-        p_br = p_utm;  /// bottom right
+        utm_tl = p_utm; /// top left
+        utm_br = p_utm;  /// bottom right
       } 
       cv::Vec3d p_utm = info_.lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
-      if(p_tl[0] < p_utm[0]) p_tl[0] = p_utm[0];
-      if(p_tl[1] > p_utm[1]) p_tl[1] = p_utm[1];
-      if(p_tl[2] < p_utm[2]) p_tl[2] = p_utm[2];
+      if(utm_tl[0] < p_utm[0]) utm_tl[0] = p_utm[0];
+      if(utm_tl[1] > p_utm[1]) utm_tl[1] = p_utm[1];
+      if(utm_tl[2] < p_utm[2]) utm_tl[2] = p_utm[2];
 
-      if(p_br[0] > p_utm[0]) p_br[0] = p_utm[0];
-      if(p_br[1] < p_utm[1]) p_br[1] = p_utm[1];
-      if(p_br[2] > p_utm[2]) p_br[2] = p_utm[2];
+      if(utm_br[0] > p_utm[0]) utm_br[0] = p_utm[0];
+      if(utm_br[1] < p_utm[1]) utm_br[1] = p_utm[1];
+      if(utm_br[2] > p_utm[2]) utm_br[2] = p_utm[2];
       nr_of_points++;
     }
   }
+
   /// adding border to outer points
-  p_tl = p_tl + cv::Vec3d(+map_border_, -map_border_, +map_border_);
-  p_br = p_br + cv::Vec3d(-map_border_, +map_border_, -map_border_);
+  utm_tl = utm_tl + cv::Vec3d(+map_border_, -map_border_, +map_border_);
+  utm_br = utm_br + cv::Vec3d(-map_border_, +map_border_, -map_border_);
 
   /// compute map size
-  object_map_.info().size.width = fabs((p_tl[0] - p_br[0]))/object_map_.info().resolution;
-  object_map_.info().size.height = fabs((p_tl[1] - p_br[1]))/object_map_.info().resolution;
+  object_map_.size.width = fabs((utm_tl[0] - utm_br[0]))/object_map_.resolution;
+  object_map_.size.height = fabs((utm_tl[1] - utm_br[1]))/object_map_.resolution;
 
   /// compute origin depnding on the map offset 
   /// ToDo check if the offset works
-  cv::Vec3d g_origin = info_.utm2lla(p_br + cv::Vec3d(object_map_.info().origin.x(), object_map_.info().origin.y(), 0));
-  object_map_.init_map(g_origin[0], g_origin[1], g_origin[2]);
-  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_map().c_str());
-  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_geo().c_str());
+  cv::Vec3d g_origin = info_.utm2lla(utm_br + cv::Vec3d(object_map_.origin.x(), object_map_.origin.y(), 0));
+  object_map_.init(g_origin[0], g_origin[1], g_origin[2]);
+  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info_map().c_str());
+  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info_geo().c_str());
 
   
 
@@ -103,10 +104,10 @@ void ObjectMapNode::callback_object_map(
   }
 
   occupancy_map_ = std::make_shared<nav_msgs::msg::OccupancyGrid>();
-  occupancy_map_->header.frame_id = frame_object_map_;
+  occupancy_map_->header.frame_id = frame_map_;
   occupancy_map_->info.width = img_src.cols;                       // Set your desired width
   occupancy_map_->info.height = img_src.rows;                      // Set your desired height
-  occupancy_map_->info.resolution = object_map_.info().resolution; // Set your desired resolution
+  occupancy_map_->info.resolution = object_map_.resolution; // Set your desired resolution
   occupancy_map_->info.origin.position.x = 0;
   occupancy_map_->info.origin.position.y = 0;
   occupancy_map_->info.origin.position.z = 0;
@@ -157,29 +158,16 @@ void ObjectMapNode::callback_load_map(const std::shared_ptr<tuw_object_map_msgs:
 
 void ObjectMapNode::publish_transforms()
 {
-  if (publish_utm_)
+  if (publish_tf_)
   {
     geometry_msgs::msg::TransformStamped tf;
     tf.header.stamp = this->get_clock()->now();
     tf.header.frame_id = frame_utm_;
     tf.child_frame_id = frame_map_;
-    tf.transform.translation.x = object_map_.info().utm()[0];
-    tf.transform.translation.y = object_map_.info().utm()[1];
-    tf.transform.translation.z = object_map_.info().utm()[2];
-    RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
-    tf_broadcaster_->sendTransform(tf);
-  }
-  {
-    geometry_msgs::msg::TransformStamped tf;
-    tf.header.stamp = this->get_clock()->now();
-    tf.header.frame_id = (publish_utm_ ? frame_utm_ : frame_map_);
-    tf.child_frame_id = frame_object_map_;
-    if (publish_utm_)
-    {
-      tf.transform.translation.x = object_map_.info().utm()[0];
-      tf.transform.translation.y = object_map_.info().utm()[1];
-      tf.transform.translation.z = object_map_.info().utm()[2];
-    }
+    cv::Vec3d utm_bl = object_map_.map2utm(cv::Point(0, object_map_.size.height-1));
+    tf.transform.translation.x = utm_bl[0];
+    tf.transform.translation.y = utm_bl[1];
+    tf.transform.translation.z = utm_bl[2];
     RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
     tf_broadcaster_->sendTransform(tf);
   }
@@ -286,18 +274,13 @@ void ObjectMapNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "frame_map";
+    descriptor.description = "frame_map name of the map frame, only need if publish_tf == true";
     this->declare_parameter<std::string>("frame_map", "map", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "frame_utm only need if publish_utm == true";
+    descriptor.description = "frame_utm name of the utm frame, only need if publish_tf == true";
     this->declare_parameter<std::string>("frame_utm", "utm", descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "frame_object_map frame of the publische object map";
-    this->declare_parameter<std::string>("frame_object_map", "object_map", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -326,23 +309,8 @@ void ObjectMapNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "origin latitude";
-    this->declare_parameter<double>("origin_latitude", 46.80213975, descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "origin longitude";
-    this->declare_parameter<double>("origin_longitude", 15.83715523, descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "origin altitude";
-    this->declare_parameter<double>("origin_altitude", 338.917, descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "on true the maps are published in relative to utm, otherwise with a zero link to frame_map";
-    this->declare_parameter<bool>("publish_utm", false, descriptor);
+    descriptor.description = "on true a tf from frame_utm to frame_map is published";
+    this->declare_parameter<bool>("publish_tf", true, descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -354,22 +322,18 @@ void ObjectMapNode::declare_parameters()
 void ObjectMapNode::read_parameters()
 {
   this->get_parameter<std::string>("debug_folder", debug_folder_);
-  RCLCPP_INFO(this->get_logger(), "debug_folder: '%s', if set it stores debug images there!", debug_folder_.c_str());
   this->get_parameter<bool>("show_map", show_map_);
-  RCLCPP_INFO(this->get_logger(), "show_map: %s", (show_map_ ? "true" : "false"));
   this->get_parameter<std::string>("frame_map", frame_map_);
   this->get_parameter<std::string>("frame_utm", frame_utm_);
-  this->get_parameter<std::string>("frame_object_map", frame_object_map_);
-  RCLCPP_INFO(this->get_logger(), "frame_map: %s, frame_utm: %s, frame_object_map: %s",
-              frame_map_.c_str(), frame_utm_.c_str(), frame_object_map_.c_str());
-  RCLCPP_INFO(this->get_logger(), "publish_utm: %s",
-              (publish_utm_ ? " true -> maps are published in utm" : " false -> maps are published in map"));
   this->get_parameter<std::string>("json_file", json_file_);
-  RCLCPP_INFO(this->get_logger(), "json_file: %s", json_file_.c_str());
-  this->get_parameter<double>("resolution", object_map_.info().resolution);
+  this->get_parameter<double>("resolution", object_map_.resolution);
   this->get_parameter<double>("map_border", map_border_);
-  this->get_parameter<double>("map_origin_latitude", map_origin_latitude_);
-  this->get_parameter<double>("map_origin_longitude", map_origin_longitude_);
-  this->get_parameter<double>("map_origin_altitude", map_origin_altitude_);
-  this->get_parameter<bool>("publish_utm", publish_utm_);
+  this->get_parameter<bool>("publish_tf", publish_tf_);
+  
+  RCLCPP_INFO(this->get_logger(), "debug_folder: '%s', if set it stores debug images there!", debug_folder_.c_str());
+  RCLCPP_INFO(this->get_logger(), "show_map: %s", (show_map_ ? "true" : "false"));
+  RCLCPP_INFO(this->get_logger(), "json_file: %s", json_file_.c_str());
+  RCLCPP_INFO(this->get_logger(), "publish_tf: %s",
+              (publish_tf_ ? " true: frame_utm -> frame_map is published" : " false: not tf is published"));
+  RCLCPP_INFO(this->get_logger(), "frame_map: %s, frame_utm: %s", frame_map_.c_str(), frame_utm_.c_str());
 }

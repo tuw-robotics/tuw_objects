@@ -13,14 +13,14 @@ GeoJSONNode::GeoJSONNode(const std::string &node_name)
     tuw_json::fromJson(tuw_json::read("geojson.json", "object_map"), *geoJson);
 
     // TODO: Proper initialization of object_map_
-    object_map_.info().resolution = 1. / 5.0;
-    object_map_.info().size.width = 1000;
-    object_map_.info().size.height = 1000;
-    object_map_.info().origin.x() = 0;
-    object_map_.info().origin.y() = 0;
-    object_map_.init_map(46.80213975, 15.83715523, 338.917);
+    object_map_.resolution = 1. / 5.0;
+    object_map_.size.width = 1000;
+    object_map_.size.height = 1000;
+    object_map_.origin.x() = 0;
+    object_map_.origin.y() = 0;
+    object_map_.init(46.80213975, 15.83715523, 338.917);
 
-    RCLCPP_INFO(this->get_logger(), "%s", object_map_.info().info_map().c_str());
+    RCLCPP_INFO(this->get_logger(), "%s", object_map_.info_map().c_str());
 
     callback_geo_json(geoJson);
 }

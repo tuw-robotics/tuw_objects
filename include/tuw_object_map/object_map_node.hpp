@@ -41,16 +41,12 @@ namespace tuw_object_map
 
     nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_map_;
     ObjectMap object_map_;
-    bool publish_utm_;
+    bool publish_tf_;
     double map_border_;
     std::string frame_map_;
     std::string frame_utm_;
-    std::string frame_object_map_;
     std::string json_file_;
     std::string debug_folder_;
-    double map_origin_latitude_;
-    double map_origin_longitude_;
-    double map_origin_altitude_;
 
     bool show_map_;
     void declare_parameters();
