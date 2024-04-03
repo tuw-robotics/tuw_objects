@@ -269,43 +269,43 @@ void ObjectMapNode::declare_parameters()
 {
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "frame_map name of the map frame, only need if publish_tf == true";
-    this->declare_parameter<std::string>("frame_map", "object_map", descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "frame_utm name of the utm frame, only need if publish_tf == true";
-    this->declare_parameter<std::string>("frame_utm", "utm", descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "json_file";
-    this->declare_parameter<std::string>("json_file", "", descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "resolution m/pix";
-    this->declare_parameter<double>("resolution", 1. / 5.0, descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "border in meters, on the created map";
-    this->declare_parameter<double>("map_border", 10, descriptor);
-  }
-  {
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "on true a tf from frame_utm to frame_map is published";
+    descriptor.description = "On true a tf from frame_utm to frame_map is published";
     this->declare_parameter<bool>("publish_tf", true, descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "debug folder, if set it stores debug information and images there";
+    descriptor.description = "Name of the map frame, only need if publish_tf == true";
+    this->declare_parameter<std::string>("frame_map", "object_map", descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "Name of the utm frame, only need if publish_tf == true";
+    this->declare_parameter<std::string>("frame_utm", "utm", descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "Filename to load the object map from a json file if not set the node will wait for a msg on the topic";
+    this->declare_parameter<std::string>("json_file", "", descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "Resolution of the generated map [m/pix]";
+    this->declare_parameter<double>("resolution", 0.1, descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "Border on the created map [meter]";
+    this->declare_parameter<double>("map_border", 10.0, descriptor);
+  }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = "If set it stores debug information and images there";
     this->declare_parameter<std::string>("debug_folder", "/tmp/ros/object_map", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "shows the map in a opencv window";
-    this->declare_parameter<bool>("show_map", true, descriptor);
+    descriptor.description = "Shows the map in a opencv window";
+    this->declare_parameter<bool>("show_map", false, descriptor);
   }
 }
 
