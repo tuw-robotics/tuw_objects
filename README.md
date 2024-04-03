@@ -1,5 +1,6 @@
 # tuw_object_map
-## Parameters
+## object_map_node
+### Parameters
 * __publish_tf__: 
   * On true a tf from frame_utm to frame_map is published
   * default: *true*
@@ -24,11 +25,11 @@
 * __show_map__: 
   * Shows the map in a opencv window
   * default: *false*
-## Publisher
+### Publisher
 * __nav_msg::OccupancyGrid__
   * Costmap with Objects 
   * Topic: *object_map*
-## Subscriber
+### Subscriber
 * __tuw_object_map_msgs::ObjectMap__
   * ObjectMap, as alternative one can provide the node with a json file (json_file)
   * Topic: *objects*
