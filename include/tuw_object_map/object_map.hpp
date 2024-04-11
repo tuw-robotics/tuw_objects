@@ -5,6 +5,7 @@
 #include <vector>
 #include <opencv2/core/core.hpp>
 #include <tuw_geometry/geo_map.hpp>
+#include <tuw_object_map_msgs/msg/object_map.hpp>
 
 namespace tuw_object_map
 {
@@ -19,7 +20,8 @@ namespace tuw_object_map
       CELL_OCCUPIED = 0x00
     };
     ObjectMap();
-    cv::Mat &process();
+    cv::Mat &mat();
+    void draw(const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg);
     void init(double latitude, double longitude, double altitude);
 
     void line(cv::Vec3d start, cv::Vec3d end, Cell value, double size);

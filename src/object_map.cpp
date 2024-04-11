@@ -84,7 +84,7 @@ void ObjectMap::imshow(int delay)
   cv::waitKey(delay);
 }
 
-cv::Mat &ObjectMap::process()
+cv::Mat &ObjectMap::mat()
 {
   return img_costmap_;
 }
@@ -93,4 +93,84 @@ void ObjectMap::init(double latitude, double longitude, double altitude)
 {
   tuw::GeoMapMetaData::init(latitude, longitude, altitude);
   img_costmap_ = cv::Mat(size.height, size.width, CV_8U, cv::Scalar(CELL_UNKNOWN));
+}
+
+
+void ObjectMap::draw(const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
+{
+
+  /// Frist draw free space
+  for (const auto &o : msg->objects)
+  {
+    cv::Vec3d p0, p1;
+    if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
+    {
+      if (o.geo_points.size() > 0)
+      {
+        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+        line(p0, p0, ObjectMap::CELL_FREE, o.bondary_radius[0]);
+      }
+      for (size_t i = 1; i < o.geo_points.size(); i++)
+      {
+        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+        line(p0, p1, ObjectMap::CELL_FREE, o.bondary_radius[i]);
+        p0 = p1;
+      }
+    }
+    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT) ||
+             (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_STREET) ||
+             (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_GRAVEL))
+    {
+      if (o.geo_points.size() > 0)
+      {
+        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+        line(p0, p0, ObjectMap::CELL_FREE, o.bondary_radius[0]);
+      }
+      for (size_t i = 1; i < o.geo_points.size(); i++)
+      {
+        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+        line(p0, p1, ObjectMap::CELL_FREE, o.bondary_radius[i]);
+        p0 = p1;
+      }
+    }
+  }
+  /// Frist draw occupied space
+  for (const auto &o : msg->objects)
+  {
+    cv::Vec3d p0, p1;
+    if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
+    {
+      if (o.geo_points.size() > 0)
+      {
+        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+        line(p0, p0, ObjectMap::CELL_OCCUPIED, o.enflation_radius[0]);
+      }
+      for (size_t i = 1; i < o.geo_points.size(); i++)
+      {
+        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+        line(p0, p1, ObjectMap::CELL_OCCUPIED, o.enflation_radius[i]);
+        p0 = p1;
+      }
+    }
+    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_OBSTACLE_TREE))
+    {
+      cv::Vec3d p0, p1;
+      if (o.geo_points.size() > 0)
+      {
+        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
+        line(p0, p0, ObjectMap::CELL_OCCUPIED, o.enflation_radius[0]);
+      }
+      for (size_t i = 1; i < o.geo_points.size(); i++)
+      {
+        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
+        line(p0, p1, ObjectMap::CELL_OCCUPIED, o.enflation_radius[i]);
+        p0 = p1;
+      }
+    }
+  }
+  /// fill corners (for stage map)
+  img_costmap()(0, 0) = ObjectMap::CELL_OCCUPIED;
+  img_costmap()(img_costmap().rows - 1, 0) = ObjectMap::CELL_OCCUPIED;
+  img_costmap()(img_costmap().rows - 1, img_costmap().cols - 1) = ObjectMap::CELL_OCCUPIED;
+  img_costmap()(0, img_costmap().cols - 1) = ObjectMap::CELL_OCCUPIED;
 }

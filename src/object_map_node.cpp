@@ -23,6 +23,8 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
       std::filesystem::create_directories(debug_folder_); // create src folder
   }
   pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_map", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+  pub_pose_map_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("pose_gps2utm", 10);
+  pub_pose_utm_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("pose_gps2map", 10);
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
   if (json_file_.empty())
@@ -35,9 +37,12 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   }
 
   using namespace std::chrono_literals;
-  timer_ = create_wall_timer(100ms, std::bind(&ObjectMapNode::callback_timer, this));
+  timer_ = create_wall_timer(1000ms, std::bind(&ObjectMapNode::callback_timer, this));
 
   this->load_map_service_ = this->create_service<tuw_object_map_msgs::srv::LoadMap>("load_map", std::bind(&ObjectMapNode::callback_load_map, this, _1, _2));
+
+
+  sub_gps_ = create_subscription<sensor_msgs::msg::NavSatFix>("point_gps", 10, std::bind(&ObjectMapNode::callback_point_gps, this, _1));
 }
 
 void ObjectMapNode::load_map(const std::string &filename) {
@@ -81,22 +86,25 @@ void ObjectMapNode::callback_object_map(
   utm_tl = utm_tl + cv::Vec3d(+map_border_, -map_border_, +map_border_);
   utm_br = utm_br + cv::Vec3d(-map_border_, +map_border_, -map_border_);
 
+  std::shared_ptr<ObjectMap> object_map = std::make_shared<ObjectMap>();
+  
   /// compute map size
-  object_map_.size.width = fabs((utm_tl[0] - utm_br[0]))/object_map_.resolution;
-  object_map_.size.height = fabs((utm_tl[1] - utm_br[1]))/object_map_.resolution;
+  object_map->resolution = resolution_;
+  object_map->size.width = fabs((utm_tl[0] - utm_br[0]))/resolution_;
+  object_map->size.height = fabs((utm_tl[1] - utm_br[1]))/resolution_;
 
   /// compute origin depnding on the map offset 
   /// ToDo check if the offset works
-  cv::Vec3d g_origin = info_.utm2lla(utm_br + cv::Vec3d(object_map_.origin.x(), object_map_.origin.y(), 0));
-  object_map_.init(g_origin[0], g_origin[1], g_origin[2]);
-  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info_map().c_str());
-  RCLCPP_INFO(this->get_logger(), "%s", object_map_.info_geo().c_str());
+  cv::Vec3d g_origin = info_.utm2lla(utm_br + cv::Vec3d(object_map->origin.x(), object_map->origin.y(), 0));
+  object_map->init(g_origin[0], g_origin[1], g_origin[2]);
+  RCLCPP_INFO(this->get_logger(), "%s", object_map->info_map().c_str());
+  RCLCPP_INFO(this->get_logger(), "%s", object_map->info_geo().c_str());
 
   
 
-  draw(msg);
+  object_map->draw(msg);
 
-  cv::Mat &img_src = object_map_.process();
+  cv::Mat &img_src = object_map->mat();
 
   if (!debug_folder_.empty())
   {
@@ -107,7 +115,7 @@ void ObjectMapNode::callback_object_map(
   occupancy_map_->header.frame_id = frame_map_;
   occupancy_map_->info.width = img_src.cols;                       // Set your desired width
   occupancy_map_->info.height = img_src.rows;                      // Set your desired height
-  occupancy_map_->info.resolution = object_map_.resolution; // Set your desired resolution
+  occupancy_map_->info.resolution = resolution_; // Set your desired resolution
   occupancy_map_->info.origin.position.x = 0;
   occupancy_map_->info.origin.position.y = 0;
   occupancy_map_->info.origin.position.z = 0;
@@ -138,7 +146,9 @@ void ObjectMapNode::callback_object_map(
   pub_occupancy_grid_map_->publish(*occupancy_map_);
 
   if (show_map_)
-    object_map_.imshow(100);
+    object_map->imshow(100);
+
+  object_map_ = object_map;
   publish_transforms();
 }
 
@@ -158,13 +168,13 @@ void ObjectMapNode::callback_load_map(const std::shared_ptr<tuw_object_map_msgs:
 
 void ObjectMapNode::publish_transforms()
 {
-  if (publish_tf_)
+  if (publish_tf_ && object_map_)
   {
     geometry_msgs::msg::TransformStamped tf;
     tf.header.stamp = this->get_clock()->now();
     tf.header.frame_id = frame_utm_;
     tf.child_frame_id = frame_map_;
-    cv::Vec3d utm_bl = object_map_.map2utm(cv::Point(0, object_map_.size.height-1));
+    cv::Vec3d utm_bl = object_map_->map2utm(cv::Point(0, object_map_->size.height-1));
     tf.transform.translation.x = utm_bl[0];
     tf.transform.translation.y = utm_bl[1];
     tf.transform.translation.z = utm_bl[2];
@@ -182,88 +192,10 @@ void ObjectMapNode::callback_timer()
   {
     pub_occupancy_grid_map_->publish(*occupancy_map_);
     if (show_map_)
-      object_map_.imshow(1000);
+      object_map_->imshow(1000);
   }
 }
 
-void ObjectMapNode::draw(tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
-{
-
-  /// Frist draw free space
-  for (const auto &o : msg->objects)
-  {
-    cv::Vec3d p0, p1;
-    if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
-    {
-      if (o.geo_points.size() > 0)
-      {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-        object_map_.line(p0, p0, ObjectMap::CELL_FREE, o.bondary_radius[0]);
-      }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
-      {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        object_map_.line(p0, p1, ObjectMap::CELL_FREE, o.bondary_radius[i]);
-        p0 = p1;
-      }
-    }
-    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT) ||
-             (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_STREET) ||
-             (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_GRAVEL))
-    {
-      if (o.geo_points.size() > 0)
-      {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-        object_map_.line(p0, p0, ObjectMap::CELL_FREE, o.bondary_radius[0]);
-      }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
-      {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        object_map_.line(p0, p1, ObjectMap::CELL_FREE, o.bondary_radius[i]);
-        p0 = p1;
-      }
-    }
-  }
-  /// Frist draw occupied space
-  for (const auto &o : msg->objects)
-  {
-    cv::Vec3d p0, p1;
-    if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
-    {
-      if (o.geo_points.size() > 0)
-      {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-        object_map_.line(p0, p0, ObjectMap::CELL_OCCUPIED, o.enflation_radius[0]);
-      }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
-      {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        object_map_.line(p0, p1, ObjectMap::CELL_OCCUPIED, o.enflation_radius[i]);
-        p0 = p1;
-      }
-    }
-    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_OBSTACLE_TREE))
-    {
-      cv::Vec3d p0, p1;
-      if (o.geo_points.size() > 0)
-      {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-        object_map_.line(p0, p0, ObjectMap::CELL_OCCUPIED, o.enflation_radius[0]);
-      }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
-      {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        object_map_.line(p0, p1, ObjectMap::CELL_OCCUPIED, o.enflation_radius[i]);
-        p0 = p1;
-      }
-    }
-  }
-  /// fill corners (for stage map)
-  object_map_.img_costmap()(0, 0) = ObjectMap::CELL_OCCUPIED;
-  object_map_.img_costmap()(object_map_.img_costmap().rows - 1, 0) = ObjectMap::CELL_OCCUPIED;
-  object_map_.img_costmap()(object_map_.img_costmap().rows - 1, object_map_.img_costmap().cols - 1) = ObjectMap::CELL_OCCUPIED;
-  object_map_.img_costmap()(0, object_map_.img_costmap().cols - 1) = ObjectMap::CELL_OCCUPIED;
-}
 
 void ObjectMapNode::declare_parameters()
 {
@@ -316,7 +248,7 @@ void ObjectMapNode::read_parameters()
   this->get_parameter<std::string>("frame_map", frame_map_);
   this->get_parameter<std::string>("frame_utm", frame_utm_);
   this->get_parameter<std::string>("json_file", json_file_);
-  this->get_parameter<double>("resolution", object_map_.resolution);
+  this->get_parameter<double>("resolution", resolution_);
   this->get_parameter<double>("map_border", map_border_);
   this->get_parameter<bool>("publish_tf", publish_tf_);
   
@@ -326,4 +258,38 @@ void ObjectMapNode::read_parameters()
   RCLCPP_INFO(this->get_logger(), "publish_tf: %s",
               (publish_tf_ ? " true: frame_utm -> frame_map is published" : " false: not tf is published"));
   RCLCPP_INFO(this->get_logger(), "frame_map: %s, frame_utm: %s", frame_map_.c_str(), frame_utm_.c_str());
+}
+
+void ObjectMapNode::callback_point_gps(const sensor_msgs::msg::NavSatFix::SharedPtr msg)
+{
+  RCLCPP_INFO(this->get_logger(), "callback_point_gps");
+  if(object_map_){
+    cv::Vec3d position_utm = object_map_->lla2utm(cv::Vec3d(msg->latitude, msg->longitude, msg->altitude));
+    geometry_msgs::msg::PoseStamped pose_utm;
+    pose_utm.header.frame_id = frame_utm_;
+    pose_utm.header.stamp = this->get_clock()->now();
+    pose_utm.pose.position.x = position_utm[0];
+    pose_utm.pose.position.y = position_utm[1];
+    pose_utm.pose.position.z = position_utm[2];
+    pose_utm.pose.orientation.x = 0.707;
+    pose_utm.pose.orientation.y = 0;
+    pose_utm.pose.orientation.z = 0;
+    pose_utm.pose.orientation.w = 0.707;
+    pub_pose_utm_->publish(pose_utm);
+
+    cv::Vec3d position_map = object_map_->utm2world(position_utm);
+    geometry_msgs::msg::PoseStamped pose_map;
+    pose_map.header.frame_id = frame_map_;
+    pose_map.header.stamp = this->get_clock()->now();
+    pose_map.pose.position.x = position_map[0];
+    pose_map.pose.position.y = position_map[1];
+    pose_map.pose.position.z = position_map[2];
+    pose_map.pose.orientation.x = 0.707;
+    pose_map.pose.orientation.y = 0;
+    pose_map.pose.orientation.z = 0;
+    pose_map.pose.orientation.w = 0.707;
+    pub_pose_map_->publish(pose_map);
+
+  }
+
 }
