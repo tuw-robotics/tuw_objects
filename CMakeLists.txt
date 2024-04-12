@@ -150,7 +150,7 @@ install(TARGETS
 ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
-  scripts/minimal_publisher_node.py
+  scripts/gps_publisher_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
