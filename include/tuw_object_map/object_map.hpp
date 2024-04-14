@@ -21,7 +21,7 @@ namespace tuw_object_map
     };
     ObjectMap();
     cv::Mat &mat();
-    void draw(const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg);
+    void draw(const tuw_object_map_msgs::msg::ObjectMap &msg);
     void init(double latitude, double longitude, double altitude);
 
     void line(cv::Vec3d start, cv::Vec3d end, Cell value, double size);

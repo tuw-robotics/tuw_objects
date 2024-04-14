@@ -96,11 +96,11 @@ void ObjectMap::init(double latitude, double longitude, double altitude)
 }
 
 
-void ObjectMap::draw(const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
+void ObjectMap::draw(const tuw_object_map_msgs::msg::ObjectMap &msg)
 {
 
   /// Frist draw free space
-  for (const auto &o : msg->objects)
+  for (const auto &o : msg.objects)
   {
     cv::Vec3d p0, p1;
     if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
@@ -135,7 +135,7 @@ void ObjectMap::draw(const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
     }
   }
   /// Frist draw occupied space
-  for (const auto &o : msg->objects)
+  for (const auto &o : msg.objects)
   {
     cv::Vec3d p0, p1;
     if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)

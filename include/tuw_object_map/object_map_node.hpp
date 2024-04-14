@@ -13,6 +13,7 @@
 
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 
 namespace tuw_object_map
 {
@@ -35,6 +36,8 @@ namespace tuw_object_map
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pose_map_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pose_utm_;
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::ConstSharedPtr sub_gps_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_;
+    std::shared_ptr<visualization_msgs::msg::Marker> marker_msg_;
 
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
@@ -47,6 +50,7 @@ namespace tuw_object_map
     void load_map(const std::string &filename);
 
     nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_map_;
+    tuw_object_map_msgs::msg::ObjectMap object_map_msg_;
     std::shared_ptr<ObjectMap> object_map_;
     bool publish_tf_;
     double map_border_;
@@ -60,6 +64,7 @@ namespace tuw_object_map
     void declare_parameters();
     void read_parameters();
     void publish_transforms();
+    void publish_marker();
   };
 }
 #endif // TUW_OBJECT_MAP__OBJECT_MAP_NODE_HPP_
