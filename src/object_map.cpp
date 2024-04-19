@@ -11,9 +11,11 @@ void onMouse(int event, int x, int y, int, void *userdata)
 {
   if (event == cv::EVENT_LBUTTONDOWN)
   {
-    cv::Vec3d lla = static_cast<tuw::GeoMapMetaData *>(userdata)->m2g(cv::Point(x, y));
-    cv::Vec2d world = static_cast<tuw::GeoMapMetaData *>(userdata)->map2world(cv::Vec2d(x, y));
-    printf("map: [%5d, %5d] px --> world: [%6.3fm, %6.3fm] --> {\"latitude\":%10.8f,\"longitude\":%10.8f,\"altitude\":%6.3f}\n", x, y, world[0], world[1], lla[0], lla[1], lla[2]);
+    tuw::Point2D p_world = static_cast<tuw::GeoHdl *>(userdata)->m2w(tuw::Point2D(x, y));
+    cv::Vec3d p_utm = static_cast<tuw::GeoHdl *>(userdata)->world2utm(cv::Vec3d(p_world.x(), p_world.y(), 0));
+    cv::Vec3d p_lla = static_cast<tuw::GeoHdl *>(userdata)->utm2lla(p_utm);
+    printf("map: [%5d, %5d] px --> world: [%6.3fm, %6.3fm] --> {\"latitude\":%10.8f,\"longitude\":%10.8f,\"altitude\":%6.3f}\n", 
+    x, y, p_world.x(), p_world.y(), p_lla[0], p_lla[1], p_lla[2]);
   }
 }
 std::vector<double> read_geo_info_jgw(const std::string &filename)
@@ -43,11 +45,11 @@ ObjectMap::ObjectMap()
 
 void ObjectMap::line(cv::Vec3d start, cv::Vec3d end, Cell value, double size)
 {
-  cv::Point a = g2m(start);
-  cv::Point b = g2m(end);
+  cv::Point a = lla2map(start);
+  cv::Point b = lla2map(end);
   if (size > 0)
   {
-    int thickness = size * 2. / resolution;
+    int thickness = size * 2. / this->resolution_x();
     cv::line(img_costmap_, a, b, cv::Scalar(value), thickness);
   }
   if (!img_map_.empty())
@@ -56,16 +58,16 @@ void ObjectMap::line(cv::Vec3d start, cv::Vec3d end, Cell value, double size)
 
 void ObjectMap::line(cv::Vec3d start, cv::Vec3d end, double bondary, double enflation)
 {
-  cv::Point a = g2m(start);
-  cv::Point b = g2m(end);
+  cv::Point a = lla2map(start);
+  cv::Point b = lla2map(end);
   if (bondary > 0)
   {
-    int thickness_bondary = bondary * 2. / resolution;
+    int thickness_bondary = bondary * 2. / this->resolution_x();
     cv::line(img_costmap_, a, b, cv::Scalar(Cell::CELL_FREE), thickness_bondary);
   }
   if (enflation > 0)
   {
-    int thickness_enflation = enflation * 2. / resolution;
+    int thickness_enflation = enflation * 2. / this->resolution_x();
     cv::line(img_costmap_, a, b, cv::Scalar(Cell::CELL_OCCUPIED), thickness_enflation);
   }
   if (!img_map_.empty())
@@ -88,13 +90,6 @@ cv::Mat &ObjectMap::mat()
 {
   return img_costmap_;
 }
-
-void ObjectMap::init(double latitude, double longitude, double altitude)
-{
-  tuw::GeoMapMetaData::init(latitude, longitude, altitude);
-  img_costmap_ = cv::Mat(size.height, size.width, CV_8U, cv::Scalar(CELL_UNKNOWN));
-}
-
 
 void ObjectMap::draw(const tuw_object_map_msgs::msg::ObjectMap &msg)
 {

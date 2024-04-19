@@ -122,34 +122,11 @@ ament_target_dependencies(
   "GeographicLib"
 )
 
-add_executable(geo_json_node src/geo_json_node.cpp)
-target_include_directories(geo_json_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(geo_json_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_link_libraries(geo_json_node object_map)
-ament_target_dependencies(
-  geo_json_node
-  "rclpy"
-  "rclcpp"
-  "rclcpp_components"
-  "tf2"
-  "tf2_ros"
-  "nav_msgs"
-  "visualization_msgs"
-  "tuw_geometry"
-  "tuw_geometry_msgs"
-  "tuw_object_map_msgs"
-  "tuw_json"
-  "OpenCV"
-)
-
 install(TARGETS 
   example_object_map
   example_geo_map
   object_map_node
   object_map
-  geo_json_node
   DESTINATION lib/${PROJECT_NAME})
 
 # Install Python modules

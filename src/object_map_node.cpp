@@ -65,9 +65,11 @@ void ObjectMapNode::callback_object_map(
     RCLCPP_INFO(this->get_logger(), "I received a new map");
     object_map_msg_.objects = msg->objects;
 
-    tuw::GeoMapMetaData info_;
+    int utm_zone;
+    bool utm_northp = true;
+    cv::Vec3d p_utm;
     RCLCPP_INFO(this->get_logger(), "Updating map mansfen e.g. map origin and map size");
-    cv::Vec3d utm_tl, utm_br; /// top left and bottom right
+    cv::Vec3d utm_tr, utm_bl; /// top right and bottom left
     int nr_of_points = 0;
     for (const auto &o : object_map_msg_.objects)
     {
@@ -75,44 +77,46 @@ void ObjectMapNode::callback_object_map(
       {
         if (nr_of_points == 0)
         {
-          info_.init(g.latitude, g.longitude, g.altitude);
-          cv::Vec3d p_utm = info_.lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
-          utm_tl = p_utm; /// top left
-          utm_br = p_utm; /// bottom right
+          cv::Vec3d p_lla(g.latitude, g.longitude, g.altitude);
+          GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1]);
+          p_utm[2] = g.altitude;
+          utm_tr = p_utm; /// top right
+          utm_bl = p_utm; /// bottom left
         }
-        cv::Vec3d p_utm = info_.lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
-        if (utm_tl[0] < p_utm[0])
-          utm_tl[0] = p_utm[0];
-        if (utm_tl[1] > p_utm[1])
-          utm_tl[1] = p_utm[1];
-        if (utm_tl[2] < p_utm[2])
-          utm_tl[2] = p_utm[2];
+        GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1]);
+        p_utm[2] = g.altitude;
+        if (utm_tr[0] < p_utm[0])
+          utm_tr[0] = p_utm[0];
+        if (utm_tr[1] < p_utm[1])
+          utm_tr[1] = p_utm[1];
+        if (utm_tr[2] < p_utm[2])
+          utm_tr[2] = p_utm[2];
 
-        if (utm_br[0] > p_utm[0])
-          utm_br[0] = p_utm[0];
-        if (utm_br[1] < p_utm[1])
-          utm_br[1] = p_utm[1];
-        if (utm_br[2] > p_utm[2])
-          utm_br[2] = p_utm[2];
+        if (utm_bl[0] > p_utm[0])
+          utm_bl[0] = p_utm[0];
+        if (utm_bl[1] > p_utm[1])
+          utm_bl[1] = p_utm[1];
+        if (utm_bl[2] > p_utm[2])
+          utm_bl[2] = p_utm[2];
         nr_of_points++;
       }
     }
 
     /// adding border to outer points
-    utm_tl = utm_tl + cv::Vec3d(+map_border_, -map_border_, +map_border_);
-    utm_br = utm_br + cv::Vec3d(-map_border_, +map_border_, -map_border_);
+    utm_bl = utm_bl + cv::Vec3d(-map_border_, -map_border_, -map_border_);
+    utm_tr = utm_tr + cv::Vec3d(+map_border_, +map_border_, +map_border_);
 
     std::shared_ptr<ObjectMap> object_map = std::make_shared<ObjectMap>();
 
     /// compute map size
-    object_map->resolution = resolution_;
-    object_map->size.width = fabs((utm_tl[0] - utm_br[0])) / resolution_;
-    object_map->size.height = fabs((utm_tl[1] - utm_br[1])) / resolution_;
+    int cols  = fabs((utm_tr[0] - utm_bl[0])) / resolution_;
+    int rows = fabs((utm_tr[1] - utm_bl[1])) / resolution_;
+    object_map->mat() = cv::Mat(rows, cols, CV_8U, cv::Scalar(ObjectMap::Cell::CELL_UNKNOWN));
 
-    /// compute origin depnding on the map offset
-    /// ToDo check if the offset works
-    cv::Vec3d g_origin = info_.utm2lla(utm_br + cv::Vec3d(object_map->origin.x(), object_map->origin.y(), 0));
-    object_map->init(g_origin[0], g_origin[1], g_origin[2]);
+
+    object_map->init(object_map->mat().size(), resolution_, tuw::MapHdl::BOTTOM_LEFT, utm_bl, utm_zone, utm_northp);
+
+
     RCLCPP_INFO(this->get_logger(), "%s", object_map->info_map().c_str());
     RCLCPP_INFO(this->get_logger(), "%s", object_map->info_geo().c_str());
 
@@ -226,7 +230,7 @@ void ObjectMapNode::publish_transforms()
     tf.header.stamp = this->get_clock()->now();
     tf.header.frame_id = frame_utm_;
     tf.child_frame_id = frame_map_;
-    cv::Vec3d utm_bl = object_map_->map2utm(cv::Point(0, object_map_->size.height - 1));
+    cv::Vec3d utm_bl = object_map_->utm();
     tf.transform.translation.x = utm_bl[0];
     tf.transform.translation.y = utm_bl[1];
     tf.transform.translation.z = utm_bl[2];
