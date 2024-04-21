@@ -111,6 +111,8 @@ void ObjectMapNode::callback_object_map(
     /// compute map size
     int cols  = fabs((utm_tr[0] - utm_bl[0])) / resolution_;
     int rows = fabs((utm_tr[1] - utm_bl[1])) / resolution_;
+    cols += cols%2;
+    rows += rows%2;
     object_map->mat() = cv::Mat(rows, cols, CV_8U, cv::Scalar(ObjectMap::Cell::CELL_UNKNOWN));
 
 
