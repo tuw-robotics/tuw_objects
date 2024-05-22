@@ -237,6 +237,28 @@ void ObjectMapNode::publish_transforms()
     tf.transform.translation.y = utm_bl[1];
     tf.transform.translation.z = utm_bl[2];
     RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
+    static bool file_written = false;
+    if(!file_written && !debug_folder_.empty()){
+      file_written = true;
+      std::string yaml_file(debug_folder_ + "static_transform_publisher.yaml");
+      std::ofstream datei(yaml_file);
+      RCLCPP_INFO(this->get_logger(), "writing debug yaml file to: %s", yaml_file.c_str());
+      if (datei.is_open()) {
+        // Daten in die Datei schreiben
+        datei << "node:\n";
+        datei << "  name: static_transform_publisher" << std::endl;
+        datei << "  namespace: my_namespace" << std::endl;
+        datei << "  package: tf2_ros" << std::endl;
+        datei << "  node_type: static_transform_publisher" << std::endl;
+        datei << "  parameters:" << std::endl;
+        datei << "    parent_frame: " << tf.header.frame_id << std::endl;
+        datei << "    child_frame:  " << tf.child_frame_id << std::endl;
+        datei << "    translation: {x: " << utm_bl[0] << ", y: " << utm_bl[1] << ", z: " << utm_bl[2] << "}" << std::endl;
+        datei << "    rotation: {x: 0.0, y: 0.0, z: -1.0, w: 0.0}" << std::endl;
+        // Datei schließen
+        datei.close();
+      } 
+    }
     tf_broadcaster_->sendTransform(tf);
   }
 }
