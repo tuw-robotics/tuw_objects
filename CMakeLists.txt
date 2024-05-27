@@ -30,28 +30,23 @@ find_package(GeographicLib REQUIRED)
 
 
 
-add_library(object_map src/object_map.cpp)
-target_compile_features(object_map PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_include_directories(object_map PUBLIC
+add_library(tuw_object_map src/object_map.cpp)
+target_compile_features(tuw_object_map PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_include_directories(tuw_object_map PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(
-  object_map
+  tuw_object_map
   "rclpy"
   "rclcpp"
   "rclcpp_components"
-  "tf2"
-  "tf2_ros"
-  "nav_msgs"
-  "visualization_msgs"
   "tuw_geometry"
   "tuw_geometry_msgs"
   "tuw_object_map_msgs"
-  "tuw_json"
   "OpenCV"
   "GeographicLib"
 )
-target_link_libraries(object_map ${GeographicLib_LIBRARIES})
+target_link_libraries(tuw_object_map ${GeographicLib_LIBRARIES})
 
 
 add_executable(object_map_node src/standalone_object_map.cpp src/object_map_node.cpp)
@@ -59,7 +54,7 @@ target_include_directories(object_map_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 target_compile_features(object_map_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_link_libraries(object_map_node object_map )
+target_link_libraries(object_map_node tuw_object_map )
 ament_target_dependencies(
   object_map_node
   "rclpy"
@@ -81,7 +76,7 @@ target_include_directories(example_object_map PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 target_compile_features(example_object_map PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_link_libraries(example_object_map object_map )
+target_link_libraries(example_object_map tuw_object_map )
 ament_target_dependencies(
   example_object_map
   "rclpy"
@@ -99,11 +94,24 @@ ament_target_dependencies(
   "GeographicLib"
 )
 
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(TARGETS 
+  tuw_object_map
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
 install(TARGETS 
   example_object_map
   object_map_node
-  object_map
-  DESTINATION lib/${PROJECT_NAME})
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # Install Python modules
 ament_python_install_package(${PROJECT_NAME})
@@ -124,5 +132,18 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+ament_export_include_directories(
+  include
+)
+ament_export_libraries(
+  tuw_object_map
+)
+ament_export_targets(
+  export_${PROJECT_NAME}
+)
+ament_export_dependencies(eigen3_cmake_module)
+ament_export_dependencies(Eigen3 
+"tuw_geometry")
 
 ament_package()
