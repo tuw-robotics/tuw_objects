@@ -50,7 +50,7 @@ void ObjectMap::line(cv::Vec3d start, cv::Vec3d end, Cell value, double size)
   if (size > 0)
   {
     int thickness = size * 2. / this->resolution_x();
-    cv::line(img_costmap_, a, b, cv::Scalar(value), thickness);
+    cv::line(img_costmap_, a, b, cv::Scalar(value, value, value), thickness);
   }
   if (!img_map_.empty())
     cv::line(img_map_, a, b, cv::Scalar(0, 0xFF, 0), 1);
@@ -63,12 +63,12 @@ void ObjectMap::line(cv::Vec3d start, cv::Vec3d end, double bondary, double enfl
   if (bondary > 0)
   {
     int thickness_bondary = bondary * 2. / this->resolution_x();
-    cv::line(img_costmap_, a, b, cv::Scalar(Cell::CELL_FREE), thickness_bondary);
+    cv::line(img_costmap_, a, b, cv::Scalar(Cell::CELL_FREE, Cell::CELL_FREE, Cell::CELL_FREE), thickness_bondary);
   }
   if (enflation > 0)
   {
     int thickness_enflation = enflation * 2. / this->resolution_x();
-    cv::line(img_costmap_, a, b, cv::Scalar(Cell::CELL_OCCUPIED), thickness_enflation);
+    cv::line(img_costmap_, a, b, cv::Scalar(Cell::CELL_OCCUPIED,Cell::CELL_OCCUPIED,Cell::CELL_OCCUPIED), thickness_enflation);
   }
   if (!img_map_.empty())
     cv::line(img_map_, a, b, cv::Scalar(0, 0xFF, 0), 1);

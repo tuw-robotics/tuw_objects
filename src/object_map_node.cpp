@@ -252,18 +252,28 @@ void ObjectMapNode::publish_transforms()
     if(!file_written && !debug_folder_.empty()){
       file_written = true;
       std::string yaml_file(debug_folder_ + "transform.txt");
-      std::ofstream datei(yaml_file);
+      std::ofstream yaml_datei(yaml_file);
       RCLCPP_INFO(this->get_logger(), "writing debug yaml file to: %s", yaml_file.c_str());
-      if (datei.is_open()) {
+      if (yaml_datei.is_open()) {
         char cmd[0x1FF];
         sprintf(cmd, "ros2 run tf2_ros static_transform_publisher %lf %lf %lf 0.0 0.0 0.0 1.0 %s %s",
         utm_bl[0], utm_bl[1], utm_bl[2], tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
-        datei << "# object map location " << std::endl;
-        datei << "# utm zone " << object_map_->zone();
-        datei << (object_map_->is_north() ? "north" : "south") << std::endl;
-        datei << cmd <<  std::endl;
-        datei.close();
+        yaml_datei << "# object map location " << std::endl;
+        yaml_datei << "# utm zone " << object_map_->zone();
+        yaml_datei << (object_map_->is_north() ? "north" : "south") << std::endl;
+        yaml_datei << cmd <<  std::endl;
+        yaml_datei.close();
       } 
+      std::string object_map_param_file(debug_folder_ + "mapimage.jgw");
+      tuw::WorldFile wf;
+      wf.resolution_x = object_map_->resolution_x();
+      wf.resolution_y = object_map_->resolution_y();
+      wf.coordinate_x = object_map_->utm()[0];
+      wf.coordinate_y = object_map_->utm()[1];
+      wf.coordinate_z = object_map_->utm()[2];
+      wf.origin_x = object_map_->origin_x();
+      wf.origin_y = object_map_->origin_y();
+      wf.write_jgw(object_map_param_file);
     }
     tf_broadcaster_->sendTransform(tf);
   }
