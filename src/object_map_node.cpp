@@ -18,7 +18,11 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   if (!debug_folder_.empty())
   {
     if (debug_folder_.back() != '/')
+    {
       debug_folder_ += '/';
+    }
+    
+    debug_folder_ += "object_map/";
     if (!std::filesystem::is_directory(debug_folder_) || !std::filesystem::exists(debug_folder_))
       std::filesystem::create_directories(debug_folder_); // create src folder
   }
@@ -329,7 +333,7 @@ void ObjectMapNode::declare_parameters()
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     descriptor.description = "If set it stores debug information and images there";
-    this->declare_parameter<std::string>("debug_folder", "/tmp/ros/object_map", descriptor);
+    this->declare_parameter<std::string>("debug_folder", "/tmp/ros", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};

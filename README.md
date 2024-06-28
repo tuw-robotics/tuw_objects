@@ -21,7 +21,7 @@
   * default: *10.0*
 * __debug_folder__: 
   * If set it stores debug information and images there
-  * default: */tmp/ros/object_map*
+  * default: */tmp/ros*
 * __show_map__: 
   * Shows the map in a opencv window
   * default: *false*
