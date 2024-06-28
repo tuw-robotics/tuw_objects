@@ -92,6 +92,7 @@ void ObjectMapNode::callback_object_map(
           GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1]);
           p_utm[2] = g.altitude;
           utm_tr = p_utm; /// top right
+          
           utm_bl = p_utm; /// bottom left
         }
         GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1]);

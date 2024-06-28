@@ -17,4 +17,8 @@ windows:
         - object_map: 
           - printf '\033]2;%s\033\\' 'object_map'
           - sleep 1; ros2 lifecycle set /geo_map configure; sleep 1; ros2 lifecycle set /geo_map activate
-          - ros2 run tuw_object_map object_map_node --ros-args  -p json_file:=./ws02/src/tuw_greenhive/config/object_map/starden-2024-01-14.json -p publish_tf:=true -p map_border:=2.0
+          - ros2 run tuw_object_map object_map_node --ros-args  -p json_file:=./ws02/src/tuw_greenhive/config/object_map/starden-2024-01-14.json -p publish_tf:=true -p map_border:=5.0
+        - graph_voronoi: 
+          - printf '\033]2;%s\033\\' 'graph_voronoi'
+          - sleep 5; 
+          - ros2 run tuw_graph_voronoi graph_voronoi_node --ros-args -p map_topic:=object_map -p publish_path:=false -p scale_mesh:=0.0 -p threshold_cut:=1.0 -p threshold_ending:=1.5
