@@ -10,14 +10,14 @@ windows:
       panes: 
         - rviz: 
           - printf '\033]2;%s\033\\' 'rviz'
-          - ros2 run rviz2 rviz2 -d ./ws02/src/tuw_object_map/config/object_map.rviz
-        - geo_map: 
-          - printf '\033]2;%s\033\\' 'geo_map'
-          - ros2 run tuw_geo_map geo_map_node --ros-args  -p mapimage_folder:=./ws02/src/tuw_geo/tuw_geo_map/config/tuw_geo_map/straden/ -p publish_tf:=true -p frame_relative:=object_map
+          - ros2 run rviz2 rviz2 -d ./ws02/src/tuw_object_map/tuw_object_map/config/object_map.rviz
         - object_map: 
           - printf '\033]2;%s\033\\' 'object_map'
           - sleep 1; ros2 lifecycle set /geo_map configure; sleep 1; ros2 lifecycle set /geo_map activate
           - ros2 run tuw_object_map object_map_node --ros-args  -p json_file:=./ws02/src/tuw_greenhive/config/object_map/starden-2024-01-14.json -p publish_tf:=true -p map_border:=5.0
+        - geo_map: 
+          - printf '\033]2;%s\033\\' 'geo_map'
+          - ros2 run tuw_geo_map geo_map_node --ros-args  -p mapimage_folder:=./ws02/src/tuw_geo/tuw_geo_map/config/tuw_geo_map/straden/ -p publish_tf:=true -p frame_relative:=object_map
         - graph_voronoi: 
           - printf '\033]2;%s\033\\' 'graph_voronoi'
           - sleep 5; 

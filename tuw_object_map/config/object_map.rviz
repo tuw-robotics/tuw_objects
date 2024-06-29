@@ -8,8 +8,8 @@ Panels:
         - /Status1
         - /SatelittMap1/Topic1
         - /Map1/Topic1
-        - /TF1
         - /TF1/Frames1
+        - /TF1/Frames1/geo_map1
         - /TF1/Tree1
         - /Pose UTM1
       Splitter Ratio: 0.5
@@ -139,8 +139,10 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
-        object_map:
-          {}
+        utm:
+          object_map:
+            geo_map:
+              {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -182,6 +184,19 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /pose_gps2utm
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Marker
+      Namespaces:
+        "": true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /plants
       Value: true
   Enabled: true
   Global Options:
@@ -238,11 +253,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 5.0279083251953125
+      Scale: 5.6330485343933105
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
-      X: 57.60884094238281
-      Y: 17.638078689575195
+      X: 81.54808807373047
+      Y: 54.40711975097656
     Saved: ~
 Window Geometry:
   Displays:
@@ -260,5 +275,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1670
-  X: 0
+  X: 1979
   Y: 25
