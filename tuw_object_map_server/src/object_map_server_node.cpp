@@ -75,7 +75,7 @@ void ObjectMapServerNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "loop or publishing rate in seconds. If 0 or less, the graph is published once and the node is shut down";
+    descriptor.description = "loop or publishing rate in seconds. If 0 or less, the graph is published once";
     this->declare_parameter<int>("loop_rate", 10, descriptor);
   }
 }
