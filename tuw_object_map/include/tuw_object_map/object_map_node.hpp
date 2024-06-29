@@ -59,6 +59,7 @@ namespace tuw_object_map
     std::string frame_utm_;
     std::string json_file_;
     std::string debug_folder_;
+    int loop_rate_;
 
     bool show_map_;
     void declare_parameters();

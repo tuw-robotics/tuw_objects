@@ -41,8 +41,9 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
     load_map(json_file_);
   }
 
-  using namespace std::chrono_literals;
-  timer_ = create_wall_timer(1000ms, std::bind(&ObjectMapNode::callback_timer, this));
+    using namespace std::chrono_literals;
+    timer_ = create_wall_timer(1000ms * loop_rate_, std::bind(&ObjectMapNode::callback_timer, this));
+  
 
   this->load_map_service_ = this->create_service<tuw_object_map_msgs::srv::LoadMap>("load_map", std::bind(&ObjectMapNode::callback_load_map, this, _1, _2));
 
@@ -340,6 +341,14 @@ void ObjectMapNode::declare_parameters()
     descriptor.description = "Shows the map in a opencv window";
     this->declare_parameter<bool>("show_map", false, descriptor);
   }
+  {
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    rcl_interfaces::msg::IntegerRange range;
+    range.set__from_value(1).set__to_value(60).set__step(1);
+    descriptor.integer_range = {range};
+    descriptor.description = "loop or publishing rate in seconds. If 0 or less, the graph is published once";
+    this->declare_parameter<int>("loop_rate", 5, descriptor);
+  }
 }
 
 void ObjectMapNode::read_parameters()
@@ -352,6 +361,7 @@ void ObjectMapNode::read_parameters()
   this->get_parameter<double>("resolution", resolution_);
   this->get_parameter<double>("map_border", map_border_);
   this->get_parameter<bool>("publish_tf", publish_tf_);
+  this->get_parameter<int>("loop_rate", loop_rate_);
 
   RCLCPP_INFO(this->get_logger(), "debug_folder: '%s', if set it stores debug images there!", debug_folder_.c_str());
   RCLCPP_INFO(this->get_logger(), "show_map: %s", (show_map_ ? "true" : "false"));
@@ -359,6 +369,7 @@ void ObjectMapNode::read_parameters()
   RCLCPP_INFO(this->get_logger(), "publish_tf: %s",
               (publish_tf_ ? " true: frame_utm -> frame_map is published" : " false: not tf is published"));
   RCLCPP_INFO(this->get_logger(), "frame_map: %s, frame_utm: %s", frame_map_.c_str(), frame_utm_.c_str());
+  RCLCPP_INFO(this->get_logger(), "loop_rate %4d", loop_rate_);
 }
 
 void ObjectMapNode::callback_point_gps(const sensor_msgs::msg::NavSatFix::SharedPtr msg)
