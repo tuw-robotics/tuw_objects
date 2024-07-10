@@ -22,6 +22,7 @@ namespace tuw_object_map
     ObjectMap();
     cv::Mat &mat();
     void draw(const tuw_object_map_msgs::msg::ObjectMap &msg);
+    void comptue_map_points(tuw_object_map_msgs::msg::ObjectMap &msg) const;
 
     void line(cv::Vec3d start, cv::Vec3d end, Cell value, double size);
     void line(cv::Vec3d start, cv::Vec3d end, double bondary, double enflation);

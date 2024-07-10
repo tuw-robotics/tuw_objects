@@ -6,6 +6,7 @@
 
 using std::placeholders::_1;
 using std::placeholders::_2;
+using std::placeholders::_3;
 
 using namespace tuw_object_map;
 
@@ -34,7 +35,7 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
   if (json_file_.empty())
   {
-    sub_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>("objects", 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
+    sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>("objects", 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
   }
   else
   {
@@ -48,6 +49,12 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   this->load_map_service_ = this->create_service<tuw_object_map_msgs::srv::LoadMap>("load_map", std::bind(&ObjectMapNode::callback_load_map, this, _1, _2));
 
   sub_gps_ = create_subscription<sensor_msgs::msg::NavSatFix>("point_gps", 10, std::bind(&ObjectMapNode::callback_point_gps, this, _1));
+
+
+  // Create a service that provides the occupancy grid
+  srv_map_ = create_service<tuw_object_map_msgs::srv::GetObjectMap>(
+    "get_objects",
+    std::bind(&ObjectMapNode::callback_get_map, this, _1, _2, _3));
 }
 
 void ObjectMapNode::load_map(const std::string &filename)
@@ -139,6 +146,8 @@ void ObjectMapNode::callback_object_map(
     RCLCPP_INFO(this->get_logger(), "%s", object_map->info_map().c_str());
     RCLCPP_INFO(this->get_logger(), "%s", object_map->info_geo().c_str());
 
+    object_map->comptue_map_points(object_map_msg_);
+    object_map_msg_.header.frame_id = frame_map_;
     object_map->draw(object_map_msg_);
 
     cv::Mat &img_src = object_map->mat();
@@ -185,6 +194,14 @@ void ObjectMapNode::callback_object_map(
 
   if (show_map_)
     object_map_->imshow(100);
+
+  static bool file_written = false;
+  if(!file_written && !debug_folder_.empty()){
+    file_written = true;
+    std::string json_file(debug_folder_ + "object_map.json");
+    RCLCPP_INFO(this->get_logger(), "writing debug json file to: %s", json_file.c_str());
+    tuw_json::write(json_file, "object_map", tuw_json::toJson(object_map_msg_));
+  }
 
   publish_transforms();
 }
@@ -297,6 +314,15 @@ void ObjectMapNode::callback_timer()
     if (show_map_)
       object_map_->imshow(1000);
   }
+}
+
+void ObjectMapNode::callback_get_map(
+  const std::shared_ptr<rmw_request_id_t>/*request_header*/,
+  const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request>/*request*/,
+  std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response)
+{
+  RCLCPP_INFO(get_logger(), "Handling GetMap request");
+  response->map = object_map_msg_;
 }
 
 void ObjectMapNode::declare_parameters()

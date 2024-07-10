@@ -9,9 +9,9 @@ Panels:
         - /SatelittMap1/Topic1
         - /Map1/Topic1
         - /TF1/Frames1
-        - /TF1/Frames1/geo_map1
         - /TF1/Tree1
         - /Pose UTM1
+        - /Graph2
       Splitter Ratio: 0.5
     Tree Height: 707
   - Class: rviz_common/Selection
@@ -63,7 +63,7 @@ Visualization Manager:
       Edges alpha: 1
       Edges color: 0; 255; 255
       Edges overlay offset: 0.10000000149011612
-      Enabled: true
+      Enabled: false
       Name: Graph
       Nodes ID color: 128; 0; 255
       Nodes alpha: 1
@@ -79,7 +79,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /graph
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map
       Color Scheme: raw
@@ -198,6 +198,33 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /plants
       Value: true
+    - Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: tuw_graph_rviz_plugins/Graph
+      Draw Edge: true
+      Draw Node: true
+      Draw Node ID: true
+      Edge Arrow Size: 0.10000000149011612
+      Edges alpha: 1
+      Edges color: 0; 255; 255
+      Edges overlay offset: 0.10000000149011612
+      Enabled: true
+      Name: Graph
+      Nodes ID color: 128; 0; 255
+      Nodes alpha: 0.5
+      Nodes color: 255; 0; 255
+      Nodes size: 0.15000000596046448
+      Path alpha: 1
+      Path color: 0; 255; 0
+      Show Path: false
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /graph_x_objects/graph
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -253,7 +280,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 5.6330485343933105
+      Scale: 29.951215744018555
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
       X: 81.54808807373047

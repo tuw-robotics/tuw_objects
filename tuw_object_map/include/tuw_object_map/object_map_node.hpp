@@ -14,6 +14,7 @@
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <visualization_msgs/msg/marker.hpp>
+#include <tuw_object_map_msgs/srv/get_object_map.hpp>
 
 namespace tuw_object_map
 {
@@ -27,12 +28,26 @@ namespace tuw_object_map
     void callback_load_map(const std::shared_ptr<tuw_object_map_msgs::srv::LoadMap::Request> request, std::shared_ptr<tuw_object_map_msgs::srv::LoadMap::Response> response);
     void callback_point_gps(const sensor_msgs::msg::NavSatFix::SharedPtr msg);
 
-    rclcpp::Subscription<tuw_object_map_msgs::msg::ObjectMap>::ConstSharedPtr sub_map_;
+    rclcpp::Subscription<tuw_object_map_msgs::msg::ObjectMap>::ConstSharedPtr sub_object_map_;
 
     rclcpp::Service<tuw_object_map_msgs::srv::LoadMap>::SharedPtr load_map_service_;
 
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_occupancy_grid_map_;
 
+    // A service to provide the occupancy grid (GetMap) and the message to return
+    rclcpp::Service<tuw_object_map_msgs::srv::GetObjectMap>::SharedPtr srv_map_;
+
+    /**
+     * @brief Map getting service callback
+     * @param request_header Service request header
+     * @param request Service request
+     * @param response Service response
+     */
+    void callback_get_map(
+      const std::shared_ptr<rmw_request_id_t> request_header,
+      const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request> request,
+      std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response);
+      
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pose_map_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pose_utm_;
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::ConstSharedPtr sub_gps_;
