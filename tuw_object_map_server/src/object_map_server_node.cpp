@@ -16,7 +16,7 @@ ObjectMapServerNode::ObjectMapServerNode(const std::string &node_name)
   read_parameters();
 
   read_object_map(object_map_json_);
-  pub_object_map_ = this->create_publisher<tuw_object_map_msgs::msg::ObjectMap>("objects", 10);
+  pub_object_map_ = this->create_publisher<tuw_object_map_msgs::msg::ObjectMap>(topic_name_objects_, 10);
   publish_map();
 
   if(loop_rate_ > 0){
@@ -25,7 +25,7 @@ ObjectMapServerNode::ObjectMapServerNode(const std::string &node_name)
   } 
   // Create a service that provides the occupancy grid
   srv_map_ = create_service<tuw_object_map_msgs::srv::GetObjectMap>(
-    "get_objects",
+    service_name_objects_,
     std::bind(&ObjectMapServerNode::callback_get_map, this, _1, _2, _3));
 }
 

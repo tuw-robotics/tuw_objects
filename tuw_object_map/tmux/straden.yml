@@ -1,0 +1,26 @@
+##enable named panes in tmux.conf with:
+#set -g pane-border-format "#{pane_index} #{pane_title}"
+#set -g pane-border-status bottom
+
+name: pioneer3dx
+#root: /home/markus/projects/tuw-ros
+
+windows:
+  - maps:
+      panes: 
+        - rviz: 
+          - printf '\033]2;%s\033\\' 'rviz'
+          - ros2 run rviz2 rviz2 -d ./ws02/src/tuw_object_map/tuw_object_map/config/object_map.rviz
+        - object_map_server: 
+          - printf '\033]2;%s\033\\' 'object_map_server'
+          - ros2 run tuw_object_map_server object_map_server_node --ros-args  -p loop_rate:=0 -r objects:=object_map_server/objects -r get_objects:=object_map_server/get_objects -p object_map_json:=./ws02/src/tuw_greenhive/config/object_map/starden-2024-01-14.json
+        - object_map: 
+          - printf '\033]2;%s\033\\' 'object_map'
+          - sleep 1; ros2 lifecycle set /geo_map configure; sleep 1; ros2 lifecycle set /geo_map activate
+          - ros2 run tuw_object_map object_map_node --ros-args   -p loop_rate:=0 -p publish_tf:=true -p map_border:=5.0 -r get_objects:=object_map_server/get_objects -r get_map:=object_map/get_map  -r map:=object_map/map -r objects:=object_map_server/objects 
+        - geo_map: 
+          - printf '\033]2;%s\033\\' 'geo_map'
+          - ros2 run tuw_geo_map geo_map_node --ros-args  -p mapimage_folder:=./ws02/src/tuw_geo/tuw_geo_map/config/tuw_geo_map/straden/ -p publish_tf:=true -p frame_relative:=object_map
+        - graph_generator: 
+          - printf '\033]2;%s\033\\' 'graph_voronoi'
+          - ros2 run tuw_graph_generator graph_generator_node --ros-args -r get_map:=/object_map/get_map -r map:=/object_map/map -p loop_rate:=0

@@ -7,7 +7,6 @@
 #include <tuw_object_map_msgs/msg/object_map.hpp>
 #include <tuw_object_map_msgs/srv/get_object_map.hpp>
 
-
 namespace tuw_object_map_server
 {
   class ObjectMapServerNode : public rclcpp::Node
@@ -16,6 +15,8 @@ namespace tuw_object_map_server
     ObjectMapServerNode(const std::string &node_name);
 
   private:
+    const std::string topic_name_objects_{"objects"};       /// topic name to subscribe for the map topic
+    const std::string service_name_objects_{"get_objects"}; /// service name provided for GetObjectMap
 
     // Publisher for the object map
     rclcpp::Publisher<tuw_object_map_msgs::msg::ObjectMap>::SharedPtr pub_object_map_;
@@ -35,10 +36,10 @@ namespace tuw_object_map_server
     // callback time
     void callback_timer();
 
-    // read object json file into 
+    // read object json file into
     void read_object_map(const std::string &filename);
 
-    // frame id use 
+    // frame id use
     std::string frame_id_;
 
     // file read
@@ -69,10 +70,9 @@ namespace tuw_object_map_server
      * @param response Service response
      */
     void callback_get_map(
-      const std::shared_ptr<rmw_request_id_t> request_header,
-      const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request> request,
-      std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response);
-
+        const std::shared_ptr<rmw_request_id_t> request_header,
+        const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request> request,
+        std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response);
   };
 }
 #endif // TUW_OBJECT_MAP_SERVER__TUW_OBJECT_MAP_SERVER_NODE_HPP_

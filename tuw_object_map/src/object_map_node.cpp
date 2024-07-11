@@ -15,6 +15,7 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
 {
   declare_parameters();
   read_parameters();
+  publish_count_ = 0;
 
   if (!debug_folder_.empty())
   {
@@ -22,39 +23,80 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
     {
       debug_folder_ += '/';
     }
-    
+
     debug_folder_ += "object_map/";
     if (!std::filesystem::is_directory(debug_folder_) || !std::filesystem::exists(debug_folder_))
       std::filesystem::create_directories(debug_folder_); // create src folder
   }
-  pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("object_map", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
-  pub_pose_map_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("pose_gps2map", 10);
-  pub_pose_utm_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("pose_gps2utm", 10);
-  pub_marker_ = this->create_publisher<visualization_msgs::msg::Marker>("plants", 10);
+  pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(topic_name_map_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
   if (json_file_.empty())
   {
-    sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>("objects", 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
+    sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>(topic_name_objects_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
   }
   else
   {
     load_map(json_file_);
   }
 
-    using namespace std::chrono_literals;
-    timer_ = create_wall_timer(1000ms * loop_rate_, std::bind(&ObjectMapNode::callback_timer, this));
-  
-
   this->load_map_service_ = this->create_service<tuw_object_map_msgs::srv::LoadMap>("load_map", std::bind(&ObjectMapNode::callback_load_map, this, _1, _2));
 
+  pub_pose_map_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("pose_gps2map", 10);
+  pub_pose_utm_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("pose_gps2utm", 10);
   sub_gps_ = create_subscription<sensor_msgs::msg::NavSatFix>("point_gps", 10, std::bind(&ObjectMapNode::callback_point_gps, this, _1));
+  pub_marker_ = this->create_publisher<visualization_msgs::msg::Marker>("plants", 10);
 
+  callback_group_client_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+  client_objects_ = this->create_client<tuw_object_map_msgs::srv::GetObjectMap>(
+      service_name_objects_,
+      rmw_qos_profile_services_default,
+      callback_group_client_);
 
   // Create a service that provides the occupancy grid
-  srv_map_ = create_service<tuw_object_map_msgs::srv::GetObjectMap>(
-    "get_objects",
-    std::bind(&ObjectMapNode::callback_get_map, this, _1, _2, _3));
+  srv_occ_map_ = create_service<nav_msgs::srv::GetMap>(
+      service_name_map_,
+      std::bind(&ObjectMapNode::callback_get_occ_map, this, _1, _2, _3));
+
+  service_objects_reqeust();
+
+  callback_group_timer_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  timer_transform_ = create_wall_timer(std::chrono::seconds(10), std::bind(&ObjectMapNode::publish_transforms, this), callback_group_timer_);
+  if (loop_rate_ > 0)
+  {
+    timer_ = create_wall_timer(std::chrono::seconds(1) * loop_rate_, std::bind(&ObjectMapNode::callback_timer, this), callback_group_timer_);
+  }
+}
+
+void ObjectMapNode::service_objects_reqeust()
+{
+
+  // Wait for the service to be available
+  while (!client_objects_->wait_for_service(std::chrono::seconds(1)))
+  {
+    if (!rclcpp::ok())
+    {
+      RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+      return;
+    }
+    RCLCPP_INFO(this->get_logger(), "Service GetObjectMap not available, waiting again ... ");
+  }
+  // Create a request
+  auto request = std::make_shared<tuw_object_map_msgs::srv::GetObjectMap::Request>();
+
+  auto result_future = client_objects_->async_send_request(request);
+
+  // Wait for the result
+  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result_future) !=
+      rclcpp::FutureReturnCode::SUCCESS)
+  {
+    RCLCPP_ERROR(this->get_logger(), "Failed to call service map");
+    return;
+  }
+  RCLCPP_INFO(this->get_logger(), "Successfuly call service map");
+  auto result = result_future.get();
+  process_objects(result->map);
 }
 
 void ObjectMapNode::load_map(const std::string &filename)
@@ -68,7 +110,14 @@ void ObjectMapNode::load_map(const std::string &filename)
 void ObjectMapNode::callback_object_map(
     const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
 {
-  if (object_map_msg_.objects == msg->objects)
+  RCLCPP_INFO(this->get_logger(), "callback_object_map");
+  process_objects(*msg);
+}
+
+void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &objects)
+{
+
+  if (object_map_msg_.objects == objects.objects)
   {
     RCLCPP_INFO(this->get_logger(), "I received a knwon map");
   }
@@ -77,16 +126,15 @@ void ObjectMapNode::callback_object_map(
     RCLCPP_INFO(this->get_logger(), "I received a new map");
 
     static bool file_written = false;
-    if(!file_written && !debug_folder_.empty()){
+    if (!file_written && !debug_folder_.empty())
+    {
       file_written = true;
       std::string json_file(debug_folder_ + "object_map.json");
       RCLCPP_INFO(this->get_logger(), "writing debug json file to: %s", json_file.c_str());
-      tuw_json::write(json_file, "object_map", tuw_json::toJson(*msg));
+      tuw_json::write(json_file, "object_map", tuw_json::toJson(objects));
     }
 
-
-
-    object_map_msg_.objects = msg->objects;
+    object_map_msg_.objects = objects.objects;
 
     int utm_zone;
     bool utm_northp = true;
@@ -104,7 +152,7 @@ void ObjectMapNode::callback_object_map(
           GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1]);
           p_utm[2] = g.altitude;
           utm_tr = p_utm; /// top right
-          
+
           utm_bl = p_utm; /// bottom left
         }
         GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1]);
@@ -133,15 +181,13 @@ void ObjectMapNode::callback_object_map(
     std::shared_ptr<ObjectMap> object_map = std::make_shared<ObjectMap>();
 
     /// compute map size
-    int cols  = fabs((utm_tr[0] - utm_bl[0])) / resolution_;
+    int cols = fabs((utm_tr[0] - utm_bl[0])) / resolution_;
     int rows = fabs((utm_tr[1] - utm_bl[1])) / resolution_;
-    cols += cols%2;
-    rows += rows%2;
+    cols += cols % 2;
+    rows += rows % 2;
     object_map->mat() = cv::Mat(rows, cols, CV_8U, cv::Scalar(ObjectMap::Cell::CELL_UNKNOWN));
 
-
     object_map->init(object_map->mat().size(), resolution_, tuw::MapHdl::BOTTOM_LEFT, utm_bl, utm_zone, utm_northp);
-
 
     RCLCPP_INFO(this->get_logger(), "%s", object_map->info_map().c_str());
     RCLCPP_INFO(this->get_logger(), "%s", object_map->info_geo().c_str());
@@ -196,7 +242,8 @@ void ObjectMapNode::callback_object_map(
     object_map_->imshow(100);
 
   static bool file_written = false;
-  if(!file_written && !debug_folder_.empty()){
+  if (!file_written && !debug_folder_.empty())
+  {
     file_written = true;
     std::string json_file(debug_folder_ + "object_map.json");
     RCLCPP_INFO(this->get_logger(), "writing debug json file to: %s", json_file.c_str());
@@ -225,7 +272,7 @@ void ObjectMapNode::publish_marker()
 {
   if (!object_map_)
     return;
-    
+
   if (!marker_msg_)
   {
     marker_msg_ = std::make_shared<visualization_msgs::msg::Marker>();
@@ -260,6 +307,7 @@ void ObjectMapNode::publish_marker()
 
 void ObjectMapNode::publish_transforms()
 {
+  RCLCPP_DEBUG(this->get_logger(), "publish_transforms");
   if (publish_tf_ && object_map_)
   {
     geometry_msgs::msg::TransformStamped tf;
@@ -272,21 +320,23 @@ void ObjectMapNode::publish_transforms()
     tf.transform.translation.z = utm_bl[2];
     RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
     static bool file_written = false;
-    if(!file_written && !debug_folder_.empty()){
+    if (!file_written && !debug_folder_.empty())
+    {
       file_written = true;
       std::string yaml_file(debug_folder_ + "transform.txt");
       std::ofstream yaml_datei(yaml_file);
       RCLCPP_INFO(this->get_logger(), "writing debug yaml file to: %s", yaml_file.c_str());
-      if (yaml_datei.is_open()) {
+      if (yaml_datei.is_open())
+      {
         char cmd[0x1FF];
         sprintf(cmd, "ros2 run tf2_ros static_transform_publisher %lf %lf %lf 0.0 0.0 0.0 1.0 %s %s",
-        utm_bl[0], utm_bl[1], utm_bl[2], tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
+                utm_bl[0], utm_bl[1], utm_bl[2], tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
         yaml_datei << "# object map location " << std::endl;
         yaml_datei << "# utm zone " << object_map_->zone();
         yaml_datei << (object_map_->is_north() ? "north" : "south") << std::endl;
-        yaml_datei << cmd <<  std::endl;
+        yaml_datei << cmd << std::endl;
         yaml_datei.close();
-      } 
+      }
       std::string object_map_param_file(debug_folder_ + "mapimage.jgw");
       tuw::WorldFile wf;
       wf.resolution_x = object_map_->resolution_x();
@@ -304,7 +354,7 @@ void ObjectMapNode::publish_transforms()
 
 void ObjectMapNode::callback_timer()
 {
-  // RCLCPP_INFO(this->get_logger(), "on_timer");
+  RCLCPP_DEBUG(this->get_logger(), "callback_timer");
 
   publish_transforms();
   publish_marker();
@@ -313,16 +363,28 @@ void ObjectMapNode::callback_timer()
     pub_occupancy_grid_map_->publish(*occupancy_map_);
     if (show_map_)
       object_map_->imshow(1000);
+    RCLCPP_DEBUG(this->get_logger(), "published occupancy_map %4ld", publish_count_++);
+  }
+  else
+  {
+    RCLCPP_INFO(this->get_logger(), "callback_timer no occupancy_map computed");
   }
 }
 
-void ObjectMapNode::callback_get_map(
-  const std::shared_ptr<rmw_request_id_t>/*request_header*/,
-  const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request>/*request*/,
-  std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response)
+void ObjectMapNode::callback_get_occ_map(
+    const std::shared_ptr<rmw_request_id_t> /*request_header*/,
+    const std::shared_ptr<nav_msgs::srv::GetMap::Request> /*request*/,
+    std::shared_ptr<nav_msgs::srv::GetMap::Response> response)
 {
   RCLCPP_INFO(get_logger(), "Handling GetMap request");
-  response->map = object_map_msg_;
+  if (occupancy_map_)
+  {
+    response->map = *occupancy_map_;
+  }
+  else
+  {
+    RCLCPP_WARN(get_logger(), "map not ready");
+  }
 }
 
 void ObjectMapNode::declare_parameters()
@@ -370,9 +432,9 @@ void ObjectMapNode::declare_parameters()
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
     rcl_interfaces::msg::IntegerRange range;
-    range.set__from_value(1).set__to_value(60).set__step(1);
+    range.set__from_value(0).set__to_value(60).set__step(1);
     descriptor.integer_range = {range};
-    descriptor.description = "loop or publishing rate in seconds. If 0 or less, the graph is published once";
+    descriptor.description = "loop or publishing rate in seconds. If 0, the graph is published once and after a topic received";
     this->declare_parameter<int>("loop_rate", 5, descriptor);
   }
 }
