@@ -44,9 +44,6 @@ namespace tuw_object_map
 
 
 
-  rclcpp::CallbackGroup::SharedPtr callback_group_client_;
-  rclcpp::CallbackGroup::SharedPtr callback_group_timer_;
-    rclcpp::Client<tuw_object_map_msgs::srv::GetObjectMap>::SharedPtr client_objects_;
     void service_objects_reqeust();
 
     // A service to provide the occupancy grid (GetMap) and the message to return

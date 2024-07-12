@@ -6,12 +6,9 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Grid1
         - /SatelittMap1/Topic1
-        - /Map1/Topic1
         - /TF1/Frames1
         - /TF1/Tree1
-        - /Graph2
       Splitter Ratio: 0.5
     Tree Height: 707
   - Class: rviz_common/Selection
@@ -113,13 +110,13 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /object_map/map
+        Value: /map
       Update Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /object_map/map_updates
+        Value: /map_updates
       Use Timestamp: false
       Value: true
     - Class: rviz_default_plugins/TF
@@ -208,8 +205,8 @@ Visualization Manager:
       Edges alpha: 1
       Edges color: 0; 255; 255
       Edges overlay offset: 0.10000000149011612
-      Enabled: true
-      Name: Graph
+      Enabled: false
+      Name: Graph Voronoi
       Nodes ID color: 128; 0; 255
       Nodes alpha: 0.5
       Nodes color: 255; 0; 255
@@ -223,7 +220,34 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /graph
+        Value: /graph_voronoi
+      Value: false
+    - Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: tuw_graph_rviz_plugins/Graph
+      Draw Edge: true
+      Draw Node: true
+      Draw Node ID: true
+      Edge Arrow Size: 0.10000000149011612
+      Edges alpha: 1
+      Edges color: 0; 255; 255
+      Edges overlay offset: 0.10000000149011612
+      Enabled: true
+      Name: Graph Split
+      Nodes ID color: 128; 0; 255
+      Nodes alpha: 0.5
+      Nodes color: 255; 0; 255
+      Nodes size: 0.15000000596046448
+      Path alpha: 1
+      Path color: 0; 255; 0
+      Show Path: false
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /graph_split
       Value: true
   Enabled: true
   Global Options:
@@ -280,11 +304,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 4.264611721038818
+      Scale: 14.496028900146484
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
-      X: 81.54808807373047
-      Y: 54.40711975097656
+      X: 88.61256408691406
+      Y: 15.72911548614502
     Saved: ~
 Window Geometry:
   Displays:
@@ -302,5 +326,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1670
-  X: 306
-  Y: 82
+  X: 240
+  Y: 25

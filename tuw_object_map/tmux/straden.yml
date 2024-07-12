@@ -21,6 +21,3 @@ windows:
         - geo_map: 
           - printf '\033]2;%s\033\\' 'geo_map'
           - ros2 run tuw_geo_map geo_map_node --ros-args  -p mapimage_folder:=./ws02/src/tuw_geo/tuw_geo_map/config/tuw_geo_map/straden/ -p publish_tf:=true -p frame_relative:=object_map
-        - graph_generator: 
-          - printf '\033]2;%s\033\\' 'graph_voronoi'
-          - ros2 run tuw_graph_generator graph_generator_node --ros-args -r get_map:=/object_map/get_map -r map:=/object_map/map -p loop_rate:=0

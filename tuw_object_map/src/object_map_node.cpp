@@ -47,13 +47,6 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   sub_gps_ = create_subscription<sensor_msgs::msg::NavSatFix>("point_gps", 10, std::bind(&ObjectMapNode::callback_point_gps, this, _1));
   pub_marker_ = this->create_publisher<visualization_msgs::msg::Marker>("plants", 10);
 
-  callback_group_client_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-
-  client_objects_ = this->create_client<tuw_object_map_msgs::srv::GetObjectMap>(
-      service_name_objects_,
-      rmw_qos_profile_services_default,
-      callback_group_client_);
-
   // Create a service that provides the occupancy grid
   srv_occ_map_ = create_service<nav_msgs::srv::GetMap>(
       service_name_map_,
@@ -61,19 +54,21 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
 
   service_objects_reqeust();
 
-  callback_group_timer_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  timer_transform_ = create_wall_timer(std::chrono::seconds(10), std::bind(&ObjectMapNode::publish_transforms, this), callback_group_timer_);
+  timer_transform_ = create_wall_timer(std::chrono::seconds(10), std::bind(&ObjectMapNode::publish_transforms, this));
   if (loop_rate_ > 0)
   {
-    timer_ = create_wall_timer(std::chrono::seconds(1) * loop_rate_, std::bind(&ObjectMapNode::callback_timer, this), callback_group_timer_);
+    timer_ = create_wall_timer(std::chrono::seconds(1) * loop_rate_, std::bind(&ObjectMapNode::callback_timer, this));
   }
 }
 
 void ObjectMapNode::service_objects_reqeust()
 {
 
+  auto client = this->create_client<tuw_object_map_msgs::srv::GetObjectMap>(
+      service_name_objects_);
+
   // Wait for the service to be available
-  while (!client_objects_->wait_for_service(std::chrono::seconds(1)))
+  while (!client->wait_for_service(std::chrono::seconds(1)))
   {
     if (!rclcpp::ok())
     {
@@ -85,7 +80,7 @@ void ObjectMapNode::service_objects_reqeust()
   // Create a request
   auto request = std::make_shared<tuw_object_map_msgs::srv::GetObjectMap::Request>();
 
-  auto result_future = client_objects_->async_send_request(request);
+  auto result_future = client->async_send_request(request);
 
   // Wait for the result
   if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result_future) !=
