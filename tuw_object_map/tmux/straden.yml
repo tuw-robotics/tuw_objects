@@ -17,7 +17,7 @@ windows:
         - object_map: 
           - printf '\033]2;%s\033\\' 'object_map'
           - sleep 1; ros2 lifecycle set /geo_map configure; sleep 1; ros2 lifecycle set /geo_map activate
-          - ros2 run tuw_object_map object_map_node --ros-args   -p loop_rate:=0 -p publish_tf:=true -p map_border:=5.0 -r get_objects:=object_map_server/get_objects -r get_map:=object_map/get_map  -r map:=object_map/map -r objects:=object_map_server/objects 
+          - ros2 run tuw_object_map object_map_node --ros-args   -p loop_rate:=10 -p publish_tf:=true -p map_border:=5.0 -r get_objects:=object_map_server/get_objects -r get_map:=object_map/get_map  -r map:=object_map/map -r objects:=object_map_server/objects 
         - geo_map: 
           - printf '\033]2;%s\033\\' 'geo_map'
           - ros2 run tuw_geo_map geo_map_node --ros-args  -p mapimage_folder:=./ws02/src/tuw_geo/tuw_geo_map/config/tuw_geo_map/straden/ -p publish_tf:=true -p frame_relative:=object_map
