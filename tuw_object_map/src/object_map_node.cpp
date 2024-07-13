@@ -419,7 +419,7 @@ void ObjectMapNode::declare_parameters()
   declare_parameters_with_description("debug_folder", "/tmp/ros", "Debug root folder, if set it information is stored in a subfolder of debug_folder with the node name.");
   declare_parameters_with_description("publish_tf", true, "On true a tf from frame_utm to frame_map is published");
   declare_parameters_with_description("publish_marker", true, "On true objects are published using marker msgs");
-  declare_parameters_with_description("frame_map", "object_map", "Name of the map frame, only need if publish_tf == true");
+  declare_parameters_with_description("frame_map", "map", "Name of the map frame, only need if publish_tf == true");
   declare_parameters_with_description("frame_utm", "utm", "Name of the utm frame, only need if publish_tf == true");
   declare_parameters_with_description("json_file", "", "Filename to load the object map from a json file if not set the node will wait for a msg on the topic");
   declare_parameters_with_description("resolution", 0.1, "Resolution of the generated map [m/pix]");
