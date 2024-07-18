@@ -18,14 +18,14 @@ namespace tuw_objects
     const std::string topic_name_objects_{"objects"};       /// topic name to subscribe for the map topic
     const std::string service_name_objects_{"get_objects"}; /// service name provided for GetObjectMap
 
-    // Publisher for the object map
-    rclcpp::Publisher<tuw_object_map_msgs::msg::ObjectMap>::SharedPtr pub_object_map_;
+    // Publisher for the objects
+    rclcpp::Publisher<tuw_object_map_msgs::msg::ObjectMap>::SharedPtr pub_objects_;
 
-    // A service to provide the occupancy grid (GetMap) and the message to return
-    rclcpp::Service<tuw_object_map_msgs::srv::GetObjectMap>::SharedPtr srv_map_;
+    // A service to provide the objects
+    rclcpp::Service<tuw_object_map_msgs::srv::GetObjectMap>::SharedPtr srv_objects_;
 
-    // object map read from file to be published
-    tuw_object_map_msgs::msg::ObjectMap::SharedPtr object_map_;
+    // objects read from file to be published
+    tuw_object_map_msgs::msg::ObjectMap::SharedPtr objects_;
 
     // thread for the time
     std::shared_ptr<std::thread> process_;
@@ -37,16 +37,16 @@ namespace tuw_objects
     void callback_timer();
 
     // read object json file into
-    void read_object_map(const std::string &filename);
+    void read_objects(const std::string &filename);
 
     // frame id use
     std::string frame_id_;
 
     // file read
-    std::string object_map_json_;
+    std::string objects_json_;
 
-    // file loop rate in seconds if zero node publish only onces
-    int loop_rate_;
+    // file publishing interval in seconds if zero node publish only onces
+    int pub_interval_;
 
     /**
      * declares parameters
@@ -61,7 +61,7 @@ namespace tuw_objects
     /**
      * publish map
      */
-    void publish_map();
+    void publish_objects();
 
     /**
      * @brief Map getting service callback
@@ -69,7 +69,7 @@ namespace tuw_objects
      * @param request Service request
      * @param response Service response
      */
-    void callback_get_map(
+    void callback_get_objects(
         const std::shared_ptr<rmw_request_id_t> request_header,
         const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request> request,
         std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response);
