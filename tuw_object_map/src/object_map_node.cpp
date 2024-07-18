@@ -30,19 +30,7 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
 
   pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(topic_name_map_to_provide_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
-  pub_objects_ = this->create_publisher<tuw_object_map_msgs::msg::ObjectMap>(topic_name_objects_to_provide_, 10);
-
-  if (json_file_.empty())
-  {
-    sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>(topic_name_objects_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
-  }
-  else
-  {
-    load_object_map(json_file_);
-  }
-
-  pub_marker_utm_ = this->create_publisher<visualization_msgs::msg::Marker>("utm/plants", 10);
-  pub_marker_map_ = this->create_publisher<visualization_msgs::msg::Marker>("map/plants", 10);
+  sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>(topic_name_objects_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
 
   service_objects_reqeust();
 
@@ -100,14 +88,6 @@ void ObjectMapNode::service_objects_reqeust()
   RCLCPP_INFO(this->get_logger(), "Successfuly call service map");
   auto result = result_future.get();
   process_objects(result->map);
-}
-
-void ObjectMapNode::load_object_map(const std::string &filename)
-{
-  tuw_object_map_msgs::msg::ObjectMap::SharedPtr map = std::make_shared<tuw_object_map_msgs::msg::ObjectMap>();
-  tuw_json::fromJson(tuw_json::read(filename, "object_map"), *map);
-  callback_object_map(map);
-  on_timer();
 }
 
 void ObjectMapNode::callback_object_map(
@@ -264,28 +244,22 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
   services_init_providors();
 
   publish_transforms_utm_map();
-  publish_objects();
   publish_map();
   publish_marker();
 }
 
-void ObjectMapNode::publish_objects()
-{
-  RCLCPP_DEBUG(this->get_logger(), "publish_objects");
-  if (msg_objects_processed_)
-  {
-    pub_objects_->publish(*msg_objects_processed_);
-  }
-}
 void ObjectMapNode::publish_marker()
 {
+  static rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_utm;
+  static std::shared_ptr<visualization_msgs::msg::Marker> marker_msg_utm;
   if (publish_marker_ && !msg_objects_processed_)
     return;
   if (!object_map_)
     return;
-  if (!marker_msg_utm_)
+  if (!marker_msg_utm)
   {
     auto marker = std::make_shared<visualization_msgs::msg::Marker>();
+    pub_marker_utm = this->create_publisher<visualization_msgs::msg::Marker>("utm/plants", 10);
 
     marker->header.frame_id = frame_utm_;
     marker->header.stamp = this->now();
@@ -319,12 +293,16 @@ void ObjectMapNode::publish_marker()
         marker->points.push_back(std::move(p));
       }
     }
-    marker_msg_utm_ = marker;
+    marker_msg_utm = marker;
   }
-  pub_marker_utm_->publish(*marker_msg_utm_);
-  if (!marker_msg_map_)
+  pub_marker_utm->publish(*marker_msg_utm);
+
+  static rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_map;
+  static std::shared_ptr<visualization_msgs::msg::Marker> marker_msg_map; /// marker msgs computed
+  if (!marker_msg_map)
   {
     auto marker = std::make_shared<visualization_msgs::msg::Marker>();
+    pub_marker_map = this->create_publisher<visualization_msgs::msg::Marker>("map/plants", 10);
     marker->header.frame_id = frame_map_;
     marker->header.stamp = this->now();
     marker->id = 0;
@@ -358,9 +336,9 @@ void ObjectMapNode::publish_marker()
         marker->points.push_back(std::move(p));
       }
     }
-    marker_msg_map_ = marker;
+    marker_msg_map = marker;
   }
-  pub_marker_map_->publish(*marker_msg_map_);
+  pub_marker_map->publish(*marker_msg_map);
 }
 
 void ObjectMapNode::publish_transforms_utm_map()
@@ -437,21 +415,10 @@ void ObjectMapNode::publish_transforms_top_left()
 
 void ObjectMapNode::on_timer()
 {
-  static int count = 0;
-  if (count > 10 * loop_rate_)
-  {
-    RCLCPP_INFO(this->get_logger(), "on_timer -> publish map and objects");
-    publish_map();
-    publish_objects();
-    count = 0;
-  }
-  else
-  {
-    RCLCPP_INFO(this->get_logger(), "on_timer -> publish tf and maker");
-    publish_transforms_utm_map();
-    publish_marker();
-  }
-  count++;
+  RCLCPP_INFO(this->get_logger(), "on_timer");
+  publish_map();
+  publish_transforms_utm_map();
+  publish_marker();
 }
 
 void ObjectMapNode::publish_map()
@@ -501,7 +468,6 @@ void ObjectMapNode::declare_parameters()
   declare_parameters_with_description("publish_marker", true, "On true objects are published using marker msgs");
   declare_parameters_with_description("frame_map", "map", "Name of the map frame, only need if publish_tf == true");
   declare_parameters_with_description("frame_utm", "utm", "Name of the utm frame, only need if publish_tf == true");
-  declare_parameters_with_description("json_file", "", "Filename to load the object map from a json file if not set the node will wait for a msg on the topic");
   declare_parameters_with_description("resolution", 0.1, "Resolution of the generated map [m/pix]");
   declare_parameters_with_description("map_border", 10.1, "Border on the created map [meter]");
   declare_parameters_with_description("show_map", false, "Shows the map in a opencv window");
@@ -520,7 +486,6 @@ bool ObjectMapNode::read_dynamic_parameters()
   update_parameter_and_log("show_map", show_map_, changes, first_call);
   update_parameter_and_log("publish_tf", publish_tf_, changes, first_call);
   update_parameter_and_log("utm_z_offset", utm_z_offset_, changes, first_call);
-  
 
   first_call = false;
   return changes;
@@ -531,7 +496,6 @@ void ObjectMapNode::read_static_parameters()
   get_parameter_and_log("debug_folder", debug_root_folder_);
   get_parameter_and_log("loop_rate", loop_rate_);
   get_parameter_and_log("timeout_service_call", timeout_service_call_);
-  get_parameter_and_log("json_file", json_file_);
   get_parameter_and_log("frame_utm", frame_utm_);
   get_parameter_and_log("frame_map", frame_map_);
 }

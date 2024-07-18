@@ -30,7 +30,6 @@ namespace tuw_object_map
     const std::string topic_name_objects_to_subscribe_{"objects"};            /// topic name to subscribe
     const std::string service_name_objects_to_call_{"get_objects"};           /// service name to call
     const std::string topic_name_map_to_provide_{"map"};                      /// topic name to provide
-    const std::string topic_name_objects_to_provide_{"objects_on_map"};       /// topic name to provide
     const std::string service_name_map_to_provide_{"get_map"};                /// service name to provide
     const std::string service_name_objects_to_provide_{"get_objects_on_map"}; /// service name to provide
 
@@ -42,9 +41,6 @@ namespace tuw_object_map
 
     /// publisher for the computed map (OccupancyGrid)
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_occupancy_grid_map_;
-
-    /// publisher for the updated  object_map holding now map_points (ObjectMap)
-    rclcpp::Publisher<tuw_object_map_msgs::msg::ObjectMap>::SharedPtr pub_objects_;
 
     // last received graph
     tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg_objects_received_;
@@ -87,26 +83,14 @@ namespace tuw_object_map
         const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request> request,
         std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response);
 
-    /// publisher for marker msgs
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_utm_;
-    std::shared_ptr<visualization_msgs::msg::Marker> marker_msg_utm_; /// marker msgs computed
-
-    /// publisher for marker msgs
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_map_;
-    std::shared_ptr<visualization_msgs::msg::Marker> marker_msg_map_; /// marker msgs computed
-
     rclcpp::TimerBase::SharedPtr timer_;           /// timer for loop_rate
     rclcpp::TimerBase::SharedPtr timer_transform_; /// timer to publish transformatins
 
-
-  // Used for publishing the static utm->map
-  std::unique_ptr<tf2_ros::StaticTransformBroadcaster> broadcaster_utm_;
+    // Used for publishing the static utm->map
+    std::unique_ptr<tf2_ros::StaticTransformBroadcaster> broadcaster_utm_;
 
     // callbacks
     void on_timer();
-
-    /// function to load object map from file for debuging
-    void load_object_map(const std::string &filename);
 
     /// Object map objecet need to compute the occupancy grid as well as marker and transforms
     std::shared_ptr<ObjectMap> object_map_;
@@ -116,7 +100,6 @@ namespace tuw_object_map
     int timeout_service_call_;      /// static parameter: how long should the node try to call the GetGraph servide after startup
     std::string frame_map_;         /// static parameter: Name of the map frame, only need if publish_tf == true
     std::string frame_utm_;         /// static parameter: Name of the utm frame, only need if publish_tf == true
-    std::string json_file_;         /// static parameter: Filename to load the object map from a json file if not set the node will wait for a msg on the topic
     std::string debug_root_folder_; /// static parameter: folder name with debug information from tuw_ tools
     std::string debug_dest_folder_; /// generated parameter: based on debug_root_folder_ + node name
     bool publish_tf_;               /// dynamic parameter: on true a tf from frame_utm to frame_map is published
@@ -124,7 +107,7 @@ namespace tuw_object_map
     double map_border_;             /// dynamic parameter: Border on the created map [meter]
     double resolution_;             /// dynamic parameter: Resolution of the generated map [m/pix]
     bool show_map_;                 /// dynamic parameter: Shows the map in a opencv window
-    double utm_z_offset_;           /// dynamic parameter: z offset on the location of the map 
+    double utm_z_offset_;           /// dynamic parameter: z offset on the location of the map
 
     /// starts the computation
     void process_objects(const tuw_object_map_msgs::msg::ObjectMap &objects);
@@ -135,9 +118,6 @@ namespace tuw_object_map
     void publish_transforms_top_left();
     void publish_marker();
     void publish_map();
-    void publish_objects();
-
-
   };
 }
 #endif // TUW_OBJECT_MAP__OBJECT_MAP_NODE_HPP_

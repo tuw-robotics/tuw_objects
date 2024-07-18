@@ -9,10 +9,6 @@ Panels:
         - /SatelittMap1/Topic1
         - /TF1/Frames1
         - /TF1/Tree1
-        - /Objects UTM1
-        - /Objects MAP1
-        - /Objects MAP1/Status1
-        - /Objects MAP1/Namespaces1
       Splitter Ratio: 0.5
     Tree Height: 728
   - Class: rviz_common/Selection
@@ -165,52 +161,6 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /pose_gps2map
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz_default_plugins/Pose
-      Color: 255; 170; 0
-      Enabled: true
-      Head Length: 3
-      Head Radius: 1
-      Name: Pose UTM
-      Shaft Length: 10
-      Shaft Radius: 0.5
-      Shape: Arrow
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /pose_gps2utm
-      Value: true
-    - Class: rviz_default_plugins/Marker
-      Enabled: false
-      Name: Objects UTM
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /utm/plants
-      Value: false
-    - Class: rviz_default_plugins/Marker
-      Enabled: true
-      Name: Objects MAP
-      Namespaces:
-        objects: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /map/plants
       Value: true
     - Axes Length: 1
       Axes Radius: 0.10000000149011612
