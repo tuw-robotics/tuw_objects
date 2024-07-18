@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>tuw_object_map_server</name>
+  <name>tuw_objects_server</name>
   <version>0.0.0</version>
   <description>tuw_object_map_server reads a object_map file and publishes the relate msg</description>
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>

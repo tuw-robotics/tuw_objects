@@ -1,4 +1,4 @@
-#include "tuw_object_map_server/object_map_server_node.hpp"
+#include "tuw_objects_server/objects_server_node.hpp"
 #include <tuw_object_map_msgs/object_map_json.hpp>
 #include <tuw_json/json.hpp>
 #include <filesystem>
@@ -7,9 +7,9 @@ using std::placeholders::_1;
 using std::placeholders::_2;
 using std::placeholders::_3;
 
-using namespace tuw_object_map_server;
+using namespace tuw_objects;
 
-ObjectMapServerNode::ObjectMapServerNode(const std::string &node_name)
+ObjectsServerNode::ObjectsServerNode(const std::string &node_name)
     : Node(node_name)
 {
   declare_parameters();
@@ -21,15 +21,15 @@ ObjectMapServerNode::ObjectMapServerNode(const std::string &node_name)
 
   if(loop_rate_ > 0){
     using namespace std::chrono_literals;
-    timer_ = create_wall_timer(1000ms * loop_rate_, std::bind(&ObjectMapServerNode::callback_timer, this));
+    timer_ = create_wall_timer(1000ms * loop_rate_, std::bind(&ObjectsServerNode::callback_timer, this));
   } 
   // Create a service that provides the occupancy grid
   srv_map_ = create_service<tuw_object_map_msgs::srv::GetObjectMap>(
     service_name_objects_,
-    std::bind(&ObjectMapServerNode::callback_get_map, this, _1, _2, _3));
+    std::bind(&ObjectsServerNode::callback_get_map, this, _1, _2, _3));
 }
 
-void ObjectMapServerNode::read_object_map(const std::string &filename)
+void ObjectsServerNode::read_object_map(const std::string &filename)
 {
   object_map_ = std::make_shared<tuw_object_map_msgs::msg::ObjectMap>();
   tuw_json::fromJson(tuw_json::read(filename, "object_map"), *object_map_);
@@ -39,7 +39,7 @@ void ObjectMapServerNode::read_object_map(const std::string &filename)
   }
 }
 
-void ObjectMapServerNode::callback_get_map(
+void ObjectsServerNode::callback_get_map(
   const std::shared_ptr<rmw_request_id_t>/*request_header*/,
   const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request>/*request*/,
   std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response)
@@ -48,20 +48,20 @@ void ObjectMapServerNode::callback_get_map(
   response->map = *object_map_;
 }
 
-void ObjectMapServerNode::callback_timer()
+void ObjectsServerNode::callback_timer()
 {
   RCLCPP_INFO(this->get_logger(), "on_timer");
   publish_map();
 }
 
 
-void ObjectMapServerNode::publish_map()
+void ObjectsServerNode::publish_map()
 {
   if(!object_map_) return;
   pub_object_map_->publish(*object_map_);
 }
 
-void ObjectMapServerNode::declare_parameters()
+void ObjectsServerNode::declare_parameters()
 {
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -80,7 +80,7 @@ void ObjectMapServerNode::declare_parameters()
   }
 }
 
-void ObjectMapServerNode::read_parameters()
+void ObjectsServerNode::read_parameters()
 {
   this->get_parameter<std::string>("frame_id", frame_id_);
   RCLCPP_INFO(this->get_logger(), "frame_id: %s", frame_id_.c_str());

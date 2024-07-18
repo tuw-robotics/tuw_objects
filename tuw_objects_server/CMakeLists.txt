@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(tuw_object_map_server)
+project(tuw_objects_server)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -14,13 +14,13 @@ find_package(tuw_geometry_msgs REQUIRED)
 find_package(tuw_object_map_msgs REQUIRED)
 find_package(tuw_json REQUIRED)
 
-add_executable(object_map_server_node src/object_map_server_node.cpp src/standalone_object_map_server.cpp)
-target_include_directories(object_map_server_node PUBLIC
+add_executable(objects_server_node src/objects_server_node.cpp src/standalone_objects_server.cpp)
+target_include_directories(objects_server_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(object_map_server_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(objects_server_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(
-  object_map_server_node
+  objects_server_node
   "rclpy"
   "rclcpp"
   "rclcpp_components"
@@ -34,7 +34,7 @@ install(
   DESTINATION include
 )
 
-install(TARGETS object_map_server_node
+install(TARGETS objects_server_node
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

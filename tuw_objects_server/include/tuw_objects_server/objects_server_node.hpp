@@ -1,5 +1,5 @@
-#ifndef TUW_OBJECT_MAP_SERVER__TUW_OBJECT_MAP_SERVER_NODE_HPP_
-#define TUW_OBJECT_MAP_SERVER__TUW_OBJECT_MAP_SERVER_NODE_HPP_
+#ifndef TUW_OBJECT_MAP_SERVER__TUW_OBJECTS_SERVER_NODE_HPP_
+#define TUW_OBJECT_MAP_SERVER__TUW_OBJECTS_SERVER_NODE_HPP_
 
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
@@ -7,12 +7,12 @@
 #include <tuw_object_map_msgs/msg/object_map.hpp>
 #include <tuw_object_map_msgs/srv/get_object_map.hpp>
 
-namespace tuw_object_map_server
+namespace tuw_objects
 {
-  class ObjectMapServerNode : public rclcpp::Node
+  class ObjectsServerNode : public rclcpp::Node
   {
   public:
-    ObjectMapServerNode(const std::string &node_name);
+    ObjectsServerNode(const std::string &node_name);
 
   private:
     const std::string topic_name_objects_{"objects"};       /// topic name to subscribe for the map topic
@@ -75,4 +75,4 @@ namespace tuw_object_map_server
         std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response);
   };
 }
-#endif // TUW_OBJECT_MAP_SERVER__TUW_OBJECT_MAP_SERVER_NODE_HPP_
+#endif // TUW_OBJECT_MAP_SERVER__TUW_OBJECTS_SERVER_NODE_HPP_
