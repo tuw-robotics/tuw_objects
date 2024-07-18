@@ -29,15 +29,23 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   }
 
   pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(topic_name_map_to_provide_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
-
+  pub_objects_on_map_ = this->create_publisher<tuw_object_map_msgs::msg::Objects>(topic_name_objects_to_provide_, 10);
   sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::Objects>(topic_name_objects_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
 
   service_objects_reqeust();
 
-  timer_transform_ = create_wall_timer(std::chrono::seconds(10), std::bind(&ObjectMapNode::publish_transforms_utm_map, this));
-  timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&ObjectMapNode::on_timer, this));
+  if(pub_interval_ > 0){
+    timer_ = create_wall_timer(std::chrono::milliseconds(1000) * pub_interval_, std::bind(&ObjectMapNode::on_timer, this));
+  }
 }
 
+void ObjectMapNode::on_timer()
+{
+  RCLCPP_INFO(this->get_logger(), "on_timer");
+  publish_map();
+  publish_marker();
+  publish_transforms_utm_map();
+}
 void ObjectMapNode::services_init_providors()
 {
   RCLCPP_INFO(this->get_logger(), "services_init_providors");
@@ -54,7 +62,7 @@ void ObjectMapNode::services_init_providors()
     // Create a service that provides the object map
     srv_object_map_ = create_service<tuw_object_map_msgs::srv::GetObjects>(
         service_name_objects_to_provide_,
-        std::bind(&ObjectMapNode::callback_get_object_map, this, _1, _2, _3));
+        std::bind(&ObjectMapNode::callback_get_objects, this, _1, _2, _3));
   }
 }
 void ObjectMapNode::service_objects_reqeust()
@@ -347,7 +355,7 @@ void ObjectMapNode::publish_marker()
 
 void ObjectMapNode::publish_transforms_utm_map()
 {
-  RCLCPP_DEBUG(this->get_logger(), "publish_transforms_bottom_left");
+  RCLCPP_INFO(this->get_logger(), "publish_transforms_utm_map");
 
   if (publish_tf_ && object_map_)
   {
@@ -417,13 +425,6 @@ void ObjectMapNode::publish_transforms_top_left()
   }
 }
 
-void ObjectMapNode::on_timer()
-{
-  RCLCPP_INFO(this->get_logger(), "on_timer");
-  publish_map();
-  publish_transforms_utm_map();
-  publish_marker();
-}
 
 void ObjectMapNode::publish_map()
 {
@@ -433,6 +434,7 @@ void ObjectMapNode::publish_map()
     pub_occupancy_grid_map_->publish(*occupancy_map_processed_);
     if (show_map_)
       object_map_->imshow(1000);
+    pub_objects_on_map_->publish(*msg_objects_processed_);
     RCLCPP_INFO(this->get_logger(), "published occupancy_map %4ld", publish_count++);
   }
   else
@@ -453,7 +455,7 @@ void ObjectMapNode::callback_get_occ_map(
     RCLCPP_WARN(get_logger(), "map not ready");
 }
 
-void ObjectMapNode::callback_get_object_map(
+void ObjectMapNode::callback_get_objects(
     const std::shared_ptr<rmw_request_id_t> /*request_header*/,
     const std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Request> /*request*/,
     std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Response> response)
@@ -465,7 +467,7 @@ void ObjectMapNode::callback_get_object_map(
 
 void ObjectMapNode::declare_parameters()
 {
-  declare_parameters_with_description("loop_rate", 5, "loop or publishing rate in seconds. If 0, the graph is published once and after a topic received", 0, 100, 1);
+  declare_parameters_with_description("pub_interval", 5, "Publishing interval in seconds. If 0 or less, the graph is published once.", 0, 100, 1);
   declare_parameters_with_description("timeout_service_call", 5, "Timeout on the GetGraph servide after startup in seconds. If 0, the timeout will be infinity", 0, 600, 1);
   declare_parameters_with_description("debug_folder", "/tmp/ros", "Debug root folder, if set it information is stored in a subfolder of debug_folder with the node name.");
   declare_parameters_with_description("publish_tf", true, "On true a tf from frame_utm to frame_map is published");
@@ -498,7 +500,7 @@ bool ObjectMapNode::read_dynamic_parameters()
 void ObjectMapNode::read_static_parameters()
 {
   get_parameter_and_log("debug_folder", debug_root_folder_);
-  get_parameter_and_log("loop_rate", loop_rate_);
+  get_parameter_and_log("pub_interval", pub_interval_);
   get_parameter_and_log("timeout_service_call", timeout_service_call_);
   get_parameter_and_log("frame_utm", frame_utm_);
   get_parameter_and_log("frame_map", frame_map_);

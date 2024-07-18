@@ -10,9 +10,6 @@
 * __frame_utm__: 
   * Name of the utm frame, only need if *publish_tf == true*
   * default: *utm*
-* __json_file__: 
-  * Filename to load the object map from a json file if not set the node will wait for a msg on the topic *objects*
-  * default: empty
 * __resolution__: 
   * Resolution of the generated map [m/pix]
   * default: *0.1*
@@ -28,11 +25,14 @@
 ### Publisher
 * __nav_msg::OccupancyGrid__
   * Costmap with Objects 
-  * Topic: *object_map*
+  * Type: *nav_msg::OccupancyGrid*
+* __objects_on_map__
+  * Objects, with computed map_points
+  * Type: *tuw_object_map_msgs::Objects*
 ### Subscriber
-* __tuw_object_map_msgs::ObjectMap__
-  * ObjectMap, as alternative one can provide the node with a json file (json_file)
-  * Topic: *objects*
+* __objects__
+  * Objects, published by a objects_server
+  * Type: *tuw_object_map_msgs::Objects*
 
 ## Demo
 RViz

@@ -30,8 +30,9 @@ namespace tuw_object_map
     const std::string topic_name_objects_to_subscribe_{"objects"};            /// topic name to subscribe
     const std::string service_name_objects_to_call_{"get_objects"};           /// service name to call
     const std::string topic_name_map_to_provide_{"map"};                      /// topic name to provide
+    const std::string topic_name_objects_to_provide_{"objects_on_map"};       /// topic name to provide objects with computed map_points
     const std::string service_name_map_to_provide_{"get_map"};                /// service name to provide
-    const std::string service_name_objects_to_provide_{"get_objects_on_map"}; /// service name to provide
+    const std::string service_name_objects_to_provide_{"get_objects_on_map"}; /// service name to provide objects with computed map_points
 
     /// subscriber an object map
     rclcpp::Subscription<tuw_object_map_msgs::msg::Objects>::ConstSharedPtr sub_object_map_;
@@ -41,6 +42,9 @@ namespace tuw_object_map
 
     /// publisher for the computed map (OccupancyGrid)
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_occupancy_grid_map_;
+
+    /// publisher for objects on map
+    rclcpp::Publisher<tuw_object_map_msgs::msg::Objects>::SharedPtr pub_objects_on_map_;
 
     // last received graph
     tuw_object_map_msgs::msg::Objects::SharedPtr msg_objects_received_;
@@ -78,13 +82,12 @@ namespace tuw_object_map
      * @param request Service request
      * @param response Service response
      */
-    void callback_get_object_map(
+    void callback_get_objects(
         const std::shared_ptr<rmw_request_id_t> request_header,
         const std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Request> request,
         std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Response> response);
 
     rclcpp::TimerBase::SharedPtr timer_;           /// timer for loop_rate
-    rclcpp::TimerBase::SharedPtr timer_transform_; /// timer to publish transformatins
 
     // Used for publishing the static utm->map
     std::unique_ptr<tf2_ros::StaticTransformBroadcaster> broadcaster_utm_;
@@ -96,7 +99,7 @@ namespace tuw_object_map
     std::shared_ptr<ObjectMap> object_map_;
     double utm_meridian_convergence_;
 
-    int loop_rate_;                 /// static parameter: republishing rate, not recomputation
+    int pub_interval_;              /// static parameter: republishing interval
     int timeout_service_call_;      /// static parameter: how long should the node try to call the GetGraph servide after startup
     std::string frame_map_;         /// static parameter: Name of the map frame, only need if publish_tf == true
     std::string frame_utm_;         /// static parameter: Name of the utm frame, only need if publish_tf == true
