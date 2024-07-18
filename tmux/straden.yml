@@ -10,10 +10,10 @@ windows:
       panes: 
         - rviz: 
           - printf '\033]2;%s\033\\' 'rviz'
-          - ros2 run rviz2 rviz2 -d ./ws02/src/tuw_objects/tuw_object_map/config/object_map.rviz
+          - ros2 run rviz2 rviz2 -d ./ws02/src/tuw_object_map/tuw_object_map/config/object_map.rviz
         - object_map_server: 
           - printf '\033]2;%s\033\\' 'object_map_server'
-          - ros2 run tuw_objects_server objects_server_node --ros-args  -p loop_rate:=0 -r objects:=objects_server/objects -r get_objects:=objects_server/get_objects -p object_map_json:=./ws02/src/tuw_greenhive/config/object_map/starden-2024-01-14.json
+          - ros2 run tuw_objects_server objects_server_node --ros-args  -p pub_interval:=0 -r objects:=objects_server/objects -r get_objects:=objects_server/get_objects -p objects_json:=./ws02/src/tuw_greenhive/config/object_map/starden-2024-01-14.json
         - object_map: 
           - printf '\033]2;%s\033\\' 'object_map'
           - sleep 1; ros2 lifecycle set /geo_map configure; sleep 1; ros2 lifecycle set /geo_map activate

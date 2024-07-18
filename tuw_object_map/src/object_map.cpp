@@ -91,7 +91,7 @@ cv::Mat &ObjectMap::mat()
   return img_costmap_;
 }
 
-void ObjectMap::comptue_map_points(tuw_object_map_msgs::msg::ObjectMap &msg) const
+void ObjectMap::comptue_map_points(tuw_object_map_msgs::msg::Objects &msg) const
 {
   for (auto &o : msg.objects)
   {
@@ -109,7 +109,7 @@ void ObjectMap::comptue_map_points(tuw_object_map_msgs::msg::ObjectMap &msg) con
   }
 }
 
-void ObjectMap::draw(const tuw_object_map_msgs::msg::ObjectMap &msg)
+void ObjectMap::draw(const tuw_object_map_msgs::msg::Objects &msg)
 {
 
   /// Frist draw free space

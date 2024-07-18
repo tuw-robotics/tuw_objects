@@ -4,8 +4,9 @@
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <thread>
-#include <tuw_object_map_msgs/msg/object_map.hpp>
-#include <tuw_object_map_msgs/srv/get_object_map.hpp>
+#include <tuw_object_map_msgs/msg/objects.hpp>
+#include <tuw_object_map_msgs/srv/get_objects.hpp>
+#include <std_srvs/srv/trigger.hpp>
 
 namespace tuw_objects
 {
@@ -17,15 +18,19 @@ namespace tuw_objects
   private:
     const std::string topic_name_objects_{"objects"};       /// topic name to subscribe for the map topic
     const std::string service_name_objects_{"get_objects"}; /// service name provided for GetObjectMap
+    const std::string service_name_publish_{"publish"};     /// service name to trigger a republish
 
     // Publisher for the objects
-    rclcpp::Publisher<tuw_object_map_msgs::msg::ObjectMap>::SharedPtr pub_objects_;
+    rclcpp::Publisher<tuw_object_map_msgs::msg::Objects>::SharedPtr pub_objects_;
 
     // A service to provide the objects
-    rclcpp::Service<tuw_object_map_msgs::srv::GetObjectMap>::SharedPtr srv_objects_;
+    rclcpp::Service<tuw_object_map_msgs::srv::GetObjects>::SharedPtr srv_objects_;
+
+    // A service to trigger a publish
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr srv_publish_;
 
     // objects read from file to be published
-    tuw_object_map_msgs::msg::ObjectMap::SharedPtr objects_;
+    tuw_object_map_msgs::msg::Objects::SharedPtr objects_;
 
     // thread for the time
     std::shared_ptr<std::thread> process_;
@@ -59,7 +64,7 @@ namespace tuw_objects
     void read_parameters();
 
     /**
-     * publish map
+     * publish objects
      */
     void publish_objects();
 
@@ -71,8 +76,19 @@ namespace tuw_objects
      */
     void callback_get_objects(
         const std::shared_ptr<rmw_request_id_t> request_header,
-        const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request> request,
-        std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response);
+        const std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Request> request,
+        std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Response> response);
+
+    /**
+     * @brief Map getting service callback
+     * @param request_header Service request header
+     * @param request Service request
+     * @param response Service response
+     */
+    void callback_publish(
+        const std::shared_ptr<rmw_request_id_t> request_header,
+        const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+        std::shared_ptr<std_srvs::srv::Trigger::Response> response);
   };
 }
 #endif // TUW_OBJECT_MAP_SERVER__TUW_OBJECTS_SERVER_NODE_HPP_

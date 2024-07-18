@@ -5,7 +5,7 @@
 #include <vector>
 #include <opencv2/core/core.hpp>
 #include <tuw_geometry/geo_handler.hpp>
-#include <tuw_object_map_msgs/msg/object_map.hpp>
+#include <tuw_object_map_msgs/msg/objects.hpp>
 
 namespace tuw_object_map
 {
@@ -21,8 +21,8 @@ namespace tuw_object_map
     };
     ObjectMap();
     cv::Mat &mat();
-    void draw(const tuw_object_map_msgs::msg::ObjectMap &msg);
-    void comptue_map_points(tuw_object_map_msgs::msg::ObjectMap &msg) const;
+    void draw(const tuw_object_map_msgs::msg::Objects &msg);
+    void comptue_map_points(tuw_object_map_msgs::msg::Objects &msg) const;
 
     void line(cv::Vec3d start, cv::Vec3d end, Cell value, double size);
     void line(cv::Vec3d start, cv::Vec3d end, double bondary, double enflation);

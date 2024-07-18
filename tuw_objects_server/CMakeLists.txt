@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(tuw_geometry_msgs REQUIRED)
 find_package(tuw_object_map_msgs REQUIRED)
 find_package(tuw_json REQUIRED)
@@ -24,6 +25,7 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "std_srvs"
   "tuw_geometry_msgs"
   "tuw_object_map_msgs"
   "tuw_json"

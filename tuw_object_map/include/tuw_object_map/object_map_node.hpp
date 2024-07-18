@@ -6,7 +6,7 @@
 #include <tuw_ros2_utils/node.hpp>
 #include <thread>
 #include <tuw_object_map/object_map.hpp>
-#include <tuw_object_map_msgs/msg/object_map.hpp>
+#include <tuw_object_map_msgs/msg/objects.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <nav_msgs/msg/occupancy_grid.hpp>
@@ -16,7 +16,7 @@
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <visualization_msgs/msg/marker.hpp>
-#include <tuw_object_map_msgs/srv/get_object_map.hpp>
+#include <tuw_object_map_msgs/srv/get_objects.hpp>
 
 namespace tuw_object_map
 {
@@ -34,19 +34,19 @@ namespace tuw_object_map
     const std::string service_name_objects_to_provide_{"get_objects_on_map"}; /// service name to provide
 
     /// subscriber an object map
-    rclcpp::Subscription<tuw_object_map_msgs::msg::ObjectMap>::ConstSharedPtr sub_object_map_;
+    rclcpp::Subscription<tuw_object_map_msgs::msg::Objects>::ConstSharedPtr sub_object_map_;
 
     /// callback for the incomming object map
-    void callback_object_map(const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg);
+    void callback_object_map(const tuw_object_map_msgs::msg::Objects::SharedPtr msg);
 
     /// publisher for the computed map (OccupancyGrid)
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_occupancy_grid_map_;
 
     // last received graph
-    tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg_objects_received_;
+    tuw_object_map_msgs::msg::Objects::SharedPtr msg_objects_received_;
 
     // last processed graph
-    tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg_objects_processed_;
+    tuw_object_map_msgs::msg::Objects::SharedPtr msg_objects_processed_;
     void service_objects_reqeust();
 
     // initialize services
@@ -70,7 +70,7 @@ namespace tuw_object_map
         std::shared_ptr<nav_msgs::srv::GetMap::Response> response);
 
     // A service to provide the object map (GetObjectMap)
-    rclcpp::Service<tuw_object_map_msgs::srv::GetObjectMap>::SharedPtr srv_object_map_;
+    rclcpp::Service<tuw_object_map_msgs::srv::GetObjects>::SharedPtr srv_object_map_;
 
     /**
      * @brief Objects service callback
@@ -80,8 +80,8 @@ namespace tuw_object_map
      */
     void callback_get_object_map(
         const std::shared_ptr<rmw_request_id_t> request_header,
-        const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request> request,
-        std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response);
+        const std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Request> request,
+        std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Response> response);
 
     rclcpp::TimerBase::SharedPtr timer_;           /// timer for loop_rate
     rclcpp::TimerBase::SharedPtr timer_transform_; /// timer to publish transformatins
@@ -110,7 +110,7 @@ namespace tuw_object_map
     double utm_z_offset_;           /// dynamic parameter: z offset on the location of the map
 
     /// starts the computation
-    void process_objects(const tuw_object_map_msgs::msg::ObjectMap &objects);
+    void process_objects(const tuw_object_map_msgs::msg::Objects &objects);
     void declare_parameters();      // declare parameters
     void read_static_parameters();  // ready the static parameters
     bool read_dynamic_parameters(); // ready the dynamic parameters and returns true on changes

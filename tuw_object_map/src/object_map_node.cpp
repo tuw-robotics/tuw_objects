@@ -1,5 +1,5 @@
 #include "tuw_object_map/object_map_node.hpp"
-#include <tuw_object_map_msgs/object_map_json.hpp>
+#include <tuw_object_map_msgs/objects_json.hpp>
 #include <tuw_json/json.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <filesystem>
@@ -30,7 +30,7 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
 
   pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(topic_name_map_to_provide_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
-  sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::ObjectMap>(topic_name_objects_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
+  sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::Objects>(topic_name_objects_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
 
   service_objects_reqeust();
 
@@ -52,7 +52,7 @@ void ObjectMapNode::services_init_providors()
   if (!srv_object_map_)
   {
     // Create a service that provides the object map
-    srv_object_map_ = create_service<tuw_object_map_msgs::srv::GetObjectMap>(
+    srv_object_map_ = create_service<tuw_object_map_msgs::srv::GetObjects>(
         service_name_objects_to_provide_,
         std::bind(&ObjectMapNode::callback_get_object_map, this, _1, _2, _3));
   }
@@ -60,7 +60,7 @@ void ObjectMapNode::services_init_providors()
 void ObjectMapNode::service_objects_reqeust()
 {
 
-  auto client = this->create_client<tuw_object_map_msgs::srv::GetObjectMap>(
+  auto client = this->create_client<tuw_object_map_msgs::srv::GetObjects>(
       service_name_objects_to_call_);
 
   // Wait for the service to be available
@@ -71,10 +71,10 @@ void ObjectMapNode::service_objects_reqeust()
       RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
       return;
     }
-    RCLCPP_INFO(this->get_logger(), "Service GetObjectMap not available, waiting again ... ");
+    RCLCPP_INFO(this->get_logger(), "Service GetObjects not available, waiting again ... ");
   }
   // Create a request
-  auto request = std::make_shared<tuw_object_map_msgs::srv::GetObjectMap::Request>();
+  auto request = std::make_shared<tuw_object_map_msgs::srv::GetObjects::Request>();
 
   auto result_future = client->async_send_request(request);
 
@@ -91,13 +91,13 @@ void ObjectMapNode::service_objects_reqeust()
 }
 
 void ObjectMapNode::callback_object_map(
-    const tuw_object_map_msgs::msg::ObjectMap::SharedPtr msg)
+    const tuw_object_map_msgs::msg::Objects::SharedPtr msg)
 {
-  RCLCPP_INFO(this->get_logger(), "callback_object_map");
+  RCLCPP_INFO(this->get_logger(), "callback_objects");
   process_objects(*msg);
 }
 
-void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &msg)
+void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::Objects &msg)
 {
 
   std::scoped_lock lock(lock_);
@@ -106,9 +106,13 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
     RCLCPP_INFO(this->get_logger(), "received objects allready");
     return;
   }
-  msg_objects_received_ = std::make_shared<tuw_object_map_msgs::msg::ObjectMap>(msg);
+  if(msg.objects.empty()){
+    RCLCPP_INFO(this->get_logger(), "No objects in received msg");
+    return;
+  }
+  msg_objects_received_ = std::make_shared<tuw_object_map_msgs::msg::Objects>(msg);
 
-  auto msg_objects_tmp = std::make_shared<tuw_object_map_msgs::msg::ObjectMap>(msg);
+  auto msg_objects_tmp = std::make_shared<tuw_object_map_msgs::msg::Objects>(msg);
 
   RCLCPP_INFO(this->get_logger(), "I received a new map");
 
@@ -116,9 +120,9 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
   if (!file_written && !debug_dest_folder_.empty())
   {
     file_written = true;
-    std::string json_file(debug_dest_folder_ + "object_map.json");
+    std::string json_file(debug_dest_folder_ + "objects.json");
     RCLCPP_INFO(this->get_logger(), "writing debug json file to: %s", json_file.c_str());
-    tuw_json::write(json_file, "object_map", tuw_json::toJson(*msg_objects_received_));
+    tuw_json::write(json_file, "objects", tuw_json::toJson(*msg_objects_received_));
   }
 
   int utm_zone;
@@ -190,7 +194,7 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
 
   if (!debug_dest_folder_.empty())
   {
-    cv::imwrite(debug_dest_folder_ + "object_map.png", img_src);
+    cv::imwrite(debug_dest_folder_ + "objects.png", img_src);
   }
 
   auto occupancy_map_ = std::make_shared<nav_msgs::msg::OccupancyGrid>();
@@ -234,9 +238,9 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
   if (!file_written_processed && !debug_dest_folder_.empty())
   {
     file_written_processed = true;
-    std::string json_file(debug_dest_folder_ + "object_map_processed.json");
+    std::string json_file(debug_dest_folder_ + "objects_processed.json");
     RCLCPP_INFO(this->get_logger(), "writing debug json file to: %s", json_file.c_str());
-    tuw_json::write(json_file, "object_map", tuw_json::toJson(*msg_objects_processed_));
+    tuw_json::write(json_file, "objects", tuw_json::toJson(*msg_objects_processed_));
   }
 
   occupancy_map_processed_ = occupancy_map_;
@@ -369,7 +373,7 @@ void ObjectMapNode::publish_transforms_utm_map()
         char cmd[0x1FF];
         sprintf(cmd, "ros2 run tf2_ros static_transform_publisher %lf %lf %lf 0.0 0.0 0.0 1.0 %s %s",
                 utm_bl[0], utm_bl[1], utm_bl[2], tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
-        yaml_datei << "# object map location " << std::endl;
+        yaml_datei << "# objects location " << std::endl;
         yaml_datei << "# utm zone " << object_map_->zone();
         yaml_datei << (object_map_->is_north() ? "north" : "south") << std::endl;
         yaml_datei << cmd << std::endl;
@@ -451,8 +455,8 @@ void ObjectMapNode::callback_get_occ_map(
 
 void ObjectMapNode::callback_get_object_map(
     const std::shared_ptr<rmw_request_id_t> /*request_header*/,
-    const std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Request> /*request*/,
-    std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response)
+    const std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Request> /*request*/,
+    std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Response> response)
 {
   RCLCPP_INFO(get_logger(), "Handling GetMap request");
   if (msg_objects_processed_)

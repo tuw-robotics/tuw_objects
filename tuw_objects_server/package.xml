@@ -12,6 +12,7 @@
   <depend>rclpy</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
+  <depend>std_srvs</depend>
   <depend>tuw_json</depend>
   <depend>tuw_geometry_msgs</depend>
   <depend>tuw_object_map_msgs</depend>
