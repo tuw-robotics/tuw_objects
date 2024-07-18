@@ -16,6 +16,7 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   declare_parameters();
   read_static_parameters();
   read_dynamic_parameters();
+  broadcaster_utm_ = std::make_unique<tf2_ros::StaticTransformBroadcaster>(*this);
 
   if (!debug_root_folder_.empty())
   {
@@ -40,15 +41,13 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
     load_object_map(json_file_);
   }
 
-  pub_marker_ = this->create_publisher<visualization_msgs::msg::Marker>("plants", 10);
+  pub_marker_utm_ = this->create_publisher<visualization_msgs::msg::Marker>("utm/plants", 10);
+  pub_marker_map_ = this->create_publisher<visualization_msgs::msg::Marker>("map/plants", 10);
 
   service_objects_reqeust();
 
-  timer_transform_ = create_wall_timer(std::chrono::seconds(10), std::bind(&ObjectMapNode::publish_transforms, this));
-  if (loop_rate_ > 0)
-  {
-    timer_ = create_wall_timer(std::chrono::seconds(1) * loop_rate_, std::bind(&ObjectMapNode::on_timer, this));
-  }
+  timer_transform_ = create_wall_timer(std::chrono::seconds(10), std::bind(&ObjectMapNode::publish_transforms_utm_map, this));
+  timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&ObjectMapNode::on_timer, this));
 }
 
 void ObjectMapNode::services_init_providors()
@@ -147,6 +146,7 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
   cv::Vec3d p_utm;
   RCLCPP_INFO(this->get_logger(), "Updating map mansfen e.g. map origin and map size");
   cv::Vec3d utm_tr, utm_bl; /// top right and bottom left
+  double gamma, k;
   int nr_of_points = 0;
   for (const auto &o : msg_objects_tmp->objects)
   {
@@ -155,13 +155,13 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
       if (nr_of_points == 0)
       {
         cv::Vec3d p_lla(g.latitude, g.longitude, g.altitude);
-        GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1]);
+        GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1], gamma, k);
         p_utm[2] = g.altitude;
         utm_tr = p_utm; /// top right
 
         utm_bl = p_utm; /// bottom left
       }
-      GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1]);
+      GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1], gamma, k);
       p_utm[2] = g.altitude;
       if (utm_tr[0] < p_utm[0])
         utm_tr[0] = p_utm[0];
@@ -179,10 +179,12 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
       nr_of_points++;
     }
   }
+  utm_meridian_convergence_ = gamma * M_PI / 180.0;
+  RCLCPP_INFO(this->get_logger(), "gamma: %f Deg, utm_meridian_convergence: %f rad, scale: %f", gamma, utm_meridian_convergence_, k);
 
   /// adding border to outer points
-  utm_bl = utm_bl + cv::Vec3d(-map_border_, -map_border_, -map_border_);
-  utm_tr = utm_tr + cv::Vec3d(+map_border_, +map_border_, +map_border_);
+  utm_bl = utm_bl + cv::Vec3d(-map_border_, -map_border_, 0.);
+  utm_tr = utm_tr + cv::Vec3d(+map_border_, +map_border_, 0.);
 
   std::shared_ptr<ObjectMap> object_map = std::make_shared<ObjectMap>();
 
@@ -193,7 +195,8 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
   rows += rows % 2;
   object_map->mat() = cv::Mat(rows, cols, CV_8U, cv::Scalar(ObjectMap::Cell::CELL_UNKNOWN));
 
-  object_map->init(object_map->mat().size(), resolution_, tuw::MapHdl::BOTTOM_LEFT, utm_bl, utm_zone, utm_northp);
+  cv::Point2d bottom_left(0, -rows * resolution_);
+  object_map->init(object_map->mat().size(), resolution_, bottom_left, utm_bl + cv::Vec3d(0, 0, utm_z_offset_), utm_zone, utm_northp);
 
   RCLCPP_INFO(this->get_logger(), "%s", object_map->info_map().c_str());
   RCLCPP_INFO(this->get_logger(), "%s", object_map->info_geo().c_str());
@@ -260,7 +263,7 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::ObjectMap &m
 
   services_init_providors();
 
-  publish_transforms();
+  publish_transforms_utm_map();
   publish_objects();
   publish_map();
   publish_marker();
@@ -280,47 +283,92 @@ void ObjectMapNode::publish_marker()
     return;
   if (!object_map_)
     return;
-  if (!marker_msg_)
-    marker_msg_ = std::make_shared<visualization_msgs::msg::Marker>();
-
-  marker_msg_->header.frame_id = "utm";
-  marker_msg_->header.stamp = this->now();
-  marker_msg_->id = 0;
-  marker_msg_->type = visualization_msgs::msg::Marker::CUBE_LIST;
-  marker_msg_->action = visualization_msgs::msg::Marker::ADD;
-  marker_msg_->scale.x = 1.0;
-  marker_msg_->scale.y = 1.0;
-  marker_msg_->scale.z = 1.0;
-  marker_msg_->color.r = 1.0;
-  marker_msg_->color.g = 0.0;
-  marker_msg_->color.b = 0.0;
-  marker_msg_->color.a = 1.0;
-  marker_msg_->points.clear();
-  for (const auto &o : msg_objects_processed_->objects)
+  if (!marker_msg_utm_)
   {
-    for (const auto &g : o.geo_points)
+    auto marker = std::make_shared<visualization_msgs::msg::Marker>();
+
+    marker->header.frame_id = frame_utm_;
+    marker->header.stamp = this->now();
+    marker->id = 0;
+    marker->ns = "objects";
+    marker->type = visualization_msgs::msg::Marker::CUBE_LIST;
+    marker->action = visualization_msgs::msg::Marker::ADD;
+    marker->pose.position.x = 0;
+    marker->pose.position.y = 0;
+    marker->pose.position.z = 0;
+    marker->pose.orientation.x = 0.0;
+    marker->pose.orientation.y = 0.0;
+    marker->pose.orientation.z = 0.0;
+    marker->pose.orientation.w = 1.0;
+    marker->scale.x = 1.0;
+    marker->scale.y = 1.0;
+    marker->scale.z = 1.0;
+    marker->color.r = 1.0;
+    marker->color.g = 0.0;
+    marker->color.b = 0.0;
+    marker->color.a = 0.5;
+    for (const auto &o : msg_objects_processed_->objects)
     {
-      cv::Vec3d p_utm = object_map_->lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
-      geometry_msgs::msg::Point p;
-      p.x = p_utm[0];
-      p.y = p_utm[1];
-      p.z = p_utm[2];
-      marker_msg_->points.push_back(std::move(p));
+      for (const auto &g : o.geo_points)
+      {
+        cv::Vec3d p_utm = object_map_->lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
+        geometry_msgs::msg::Point p;
+        p.x = p_utm[0];
+        p.y = p_utm[1];
+        p.z = p_utm[2];
+        marker->points.push_back(std::move(p));
+      }
     }
+    marker_msg_utm_ = marker;
   }
-  pub_marker_->publish(*marker_msg_);
+  pub_marker_utm_->publish(*marker_msg_utm_);
+  if (!marker_msg_map_)
+  {
+    auto marker = std::make_shared<visualization_msgs::msg::Marker>();
+    marker->header.frame_id = frame_map_;
+    marker->header.stamp = this->now();
+    marker->id = 0;
+    marker->ns = "objects";
+    marker->type = visualization_msgs::msg::Marker::SPHERE_LIST;
+    marker->action = visualization_msgs::msg::Marker::ADD;
+    marker->pose.position.x = 0;
+    marker->pose.position.y = 0;
+    marker->pose.position.z = 0;
+    marker->pose.orientation.x = 0.0;
+    marker->pose.orientation.y = 0.0;
+    marker->pose.orientation.z = 0.0;
+    marker->pose.orientation.w = 1.0;
+
+    marker->scale.x = 0.1;
+    marker->scale.y = 0.1;
+    marker->scale.z = 0.1;
+    marker->color.r = 0.0;
+    marker->color.g = 1.0;
+    marker->color.b = 0.0;
+    marker->color.a = 0.5;
+    for (const auto &o : msg_objects_processed_->objects)
+    {
+      for (const auto &g : o.geo_points)
+      {
+        cv::Vec3d p_map = object_map_->lla2world(cv::Vec3d(g.latitude, g.longitude, g.altitude));
+        geometry_msgs::msg::Point p;
+        p.x = p_map[0];
+        p.y = p_map[1];
+        p.z = p_map[2];
+        marker->points.push_back(std::move(p));
+      }
+    }
+    marker_msg_map_ = marker;
+  }
+  pub_marker_map_->publish(*marker_msg_map_);
 }
 
-void ObjectMapNode::publish_transforms()
+void ObjectMapNode::publish_transforms_utm_map()
 {
-  RCLCPP_DEBUG(this->get_logger(), "publish_transforms");
-  static std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster;
+  RCLCPP_DEBUG(this->get_logger(), "publish_transforms_bottom_left");
 
   if (publish_tf_ && object_map_)
   {
-    if (!tf_broadcaster)
-      tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-
     geometry_msgs::msg::TransformStamped tf;
     tf.header.stamp = this->get_clock()->now();
     tf.header.frame_id = frame_utm_;
@@ -360,18 +408,50 @@ void ObjectMapNode::publish_transforms()
       wf.origin_y = object_map_->origin_y();
       wf.write_jgw(object_map_param_file);
     }
+    broadcaster_utm_->sendTransform(tf);
+  }
+}
+void ObjectMapNode::publish_transforms_top_left()
+{
+
+  RCLCPP_DEBUG(this->get_logger(), "publish_transforms_top_left");
+  static std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster;
+
+  if (publish_tf_ && object_map_)
+  {
+    if (!tf_broadcaster)
+      tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+
+    geometry_msgs::msg::TransformStamped tf;
+    tf.header.stamp = this->get_clock()->now();
+    tf.header.frame_id = frame_utm_;
+    tf.child_frame_id = frame_map_ + std::string("_top_left");
+    cv::Vec3d utm_bl = object_map_->utm();
+    tf.transform.translation.x = utm_bl[0];
+    tf.transform.translation.y = utm_bl[1];
+    tf.transform.translation.z = utm_bl[2];
+    RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
     tf_broadcaster->sendTransform(tf);
   }
 }
 
 void ObjectMapNode::on_timer()
 {
-  RCLCPP_INFO(this->get_logger(), "on_timer");
-
-  publish_transforms();
-  publish_map();
-  publish_objects();
-  publish_marker();
+  static int count = 0;
+  if (count > 10 * loop_rate_)
+  {
+    RCLCPP_INFO(this->get_logger(), "on_timer -> publish map and objects");
+    publish_map();
+    publish_objects();
+    count = 0;
+  }
+  else
+  {
+    RCLCPP_INFO(this->get_logger(), "on_timer -> publish tf and maker");
+    publish_transforms_utm_map();
+    publish_marker();
+  }
+  count++;
 }
 
 void ObjectMapNode::publish_map()
@@ -425,6 +505,7 @@ void ObjectMapNode::declare_parameters()
   declare_parameters_with_description("resolution", 0.1, "Resolution of the generated map [m/pix]");
   declare_parameters_with_description("map_border", 10.1, "Border on the created map [meter]");
   declare_parameters_with_description("show_map", false, "Shows the map in a opencv window");
+  declare_parameters_with_description("utm_z_offset", 0.0, "offest on Z for the utm -> map frame");
 }
 
 bool ObjectMapNode::read_dynamic_parameters()
@@ -438,6 +519,8 @@ bool ObjectMapNode::read_dynamic_parameters()
   update_parameter_and_log("publish_marker", publish_marker_, changes, first_call);
   update_parameter_and_log("show_map", show_map_, changes, first_call);
   update_parameter_and_log("publish_tf", publish_tf_, changes, first_call);
+  update_parameter_and_log("utm_z_offset", utm_z_offset_, changes, first_call);
+  
 
   first_call = false;
   return changes;

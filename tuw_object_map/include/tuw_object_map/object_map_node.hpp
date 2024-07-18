@@ -8,6 +8,7 @@
 #include <tuw_object_map/object_map.hpp>
 #include <tuw_object_map_msgs/msg/object_map.hpp>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <tuw_object_map_msgs/srv/load_map.hpp>
 #include <nav_msgs/srv/get_map.hpp>
@@ -87,11 +88,20 @@ namespace tuw_object_map
         std::shared_ptr<tuw_object_map_msgs::srv::GetObjectMap::Response> response);
 
     /// publisher for marker msgs
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_;
-    std::shared_ptr<visualization_msgs::msg::Marker> marker_msg_; /// marker msgs computed
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_utm_;
+    std::shared_ptr<visualization_msgs::msg::Marker> marker_msg_utm_; /// marker msgs computed
+
+    /// publisher for marker msgs
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_map_;
+    std::shared_ptr<visualization_msgs::msg::Marker> marker_msg_map_; /// marker msgs computed
 
     rclcpp::TimerBase::SharedPtr timer_;           /// timer for loop_rate
     rclcpp::TimerBase::SharedPtr timer_transform_; /// timer to publish transformatins
+
+
+  // Used for publishing the static utm->map
+  std::unique_ptr<tf2_ros::StaticTransformBroadcaster> broadcaster_utm_;
+
     // callbacks
     void on_timer();
 
@@ -100,6 +110,7 @@ namespace tuw_object_map
 
     /// Object map objecet need to compute the occupancy grid as well as marker and transforms
     std::shared_ptr<ObjectMap> object_map_;
+    double utm_meridian_convergence_;
 
     int loop_rate_;                 /// static parameter: republishing rate, not recomputation
     int timeout_service_call_;      /// static parameter: how long should the node try to call the GetGraph servide after startup
@@ -113,13 +124,15 @@ namespace tuw_object_map
     double map_border_;             /// dynamic parameter: Border on the created map [meter]
     double resolution_;             /// dynamic parameter: Resolution of the generated map [m/pix]
     bool show_map_;                 /// dynamic parameter: Shows the map in a opencv window
+    double utm_z_offset_;           /// dynamic parameter: z offset on the location of the map 
 
     /// starts the computation
     void process_objects(const tuw_object_map_msgs::msg::ObjectMap &objects);
     void declare_parameters();      // declare parameters
     void read_static_parameters();  // ready the static parameters
     bool read_dynamic_parameters(); // ready the dynamic parameters and returns true on changes
-    void publish_transforms();
+    void publish_transforms_utm_map();
+    void publish_transforms_top_left();
     void publish_marker();
     void publish_map();
     void publish_objects();
