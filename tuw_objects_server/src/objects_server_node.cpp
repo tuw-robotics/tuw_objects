@@ -31,7 +31,7 @@ ObjectsServerNode::ObjectsServerNode(const std::string &node_name)
     std::bind(&ObjectsServerNode::callback_get_objects, this, _1, _2, _3));
 
   srv_publish_ = create_service<std_srvs::srv::Trigger>(
-    service_name_publish_,
+    service_name_publish_objects_,
     std::bind(&ObjectsServerNode::callback_publish, this, _1, _2, _3));
 }
 

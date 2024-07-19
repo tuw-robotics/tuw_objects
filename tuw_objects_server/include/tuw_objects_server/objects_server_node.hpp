@@ -17,8 +17,8 @@ namespace tuw_objects
 
   private:
     const std::string topic_name_objects_{"objects"};       /// topic name to subscribe for the map topic
-    const std::string service_name_objects_{"get_objects"}; /// service name provided for GetObjectMap
-    const std::string service_name_publish_{"publish"};     /// service name to trigger a republish
+    const std::string service_name_objects_{"get_objects"}; /// service name provided for GetObjects
+    const std::string service_name_publish_objects_{"publish_objects"};     /// service name to trigger a republish
 
     // Publisher for the objects
     rclcpp::Publisher<tuw_object_map_msgs::msg::Objects>::SharedPtr pub_objects_;
