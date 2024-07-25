@@ -72,6 +72,7 @@ void ObjectMapNode::service_objects_reqeust()
       service_name_objects_to_call_);
 
   // Wait for the service to be available
+  int timeout = timeout_service_call_;
   while (!client->wait_for_service(std::chrono::seconds(1)))
   {
     if (!rclcpp::ok())
@@ -79,7 +80,11 @@ void ObjectMapNode::service_objects_reqeust()
       RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
       return;
     }
-    RCLCPP_INFO(this->get_logger(), "Service GetObjects not available, waiting again ... ");
+    RCLCPP_INFO(this->get_logger(), "Service GetObjects not available, waiting %d sec ... ", timeout--);
+    if ((timeout_service_call_ > 0) && (timeout <= 0))
+    {
+      return;
+    }
   }
   // Create a request
   auto request = std::make_shared<tuw_object_map_msgs::srv::GetObjects::Request>();
