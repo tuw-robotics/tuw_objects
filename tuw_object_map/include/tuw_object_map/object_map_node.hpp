@@ -17,6 +17,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <tuw_object_map_msgs/srv/get_objects.hpp>
+#include <geographic_msgs/msg/geo_pose.hpp>
 
 namespace tuw_object_map
 {
@@ -30,6 +31,7 @@ namespace tuw_object_map
     const std::string topic_name_objects_to_subscribe_{"objects"};            /// topic name to subscribe
     const std::string service_name_objects_to_call_{"get_objects"};           /// service name to call
     const std::string topic_name_map_to_provide_{"map"};                      /// topic name to provide
+    const std::string topic_name_geo_pose_map_{"geo_pose_map"};               /// topic name to provide
     const std::string topic_name_objects_to_provide_{"objects_on_map"};       /// topic name to provide objects with computed map_points
     const std::string service_name_map_to_provide_{"get_map"};                /// service name to provide
     const std::string service_name_objects_to_provide_{"get_objects_on_map"}; /// service name to provide objects with computed map_points
@@ -43,6 +45,9 @@ namespace tuw_object_map
     /// publisher for the computed map (OccupancyGrid)
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_occupancy_grid_map_;
 
+    /// publisher map pose
+    rclcpp::Publisher<geographic_msgs::msg::GeoPose>::SharedPtr pub_geo_pose_map_;
+
     /// publisher for objects on map
     rclcpp::Publisher<tuw_object_map_msgs::msg::Objects>::SharedPtr pub_objects_on_map_;
 
@@ -55,6 +60,9 @@ namespace tuw_object_map
 
     // initialize services
     void services_init_providors();
+
+    // computed map orition location
+    geographic_msgs::msg::GeoPose::SharedPtr geo_pose_map_;
 
     // last processed OccupancyGrid
     nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_map_processed_;
@@ -106,6 +114,7 @@ namespace tuw_object_map
     std::string debug_root_folder_; /// static parameter: folder name with debug information from tuw_ tools
     std::string debug_dest_folder_; /// generated parameter: based on debug_root_folder_ + node name
     bool publish_tf_;               /// dynamic parameter: on true a tf from frame_utm to frame_map is published
+    bool publish_tf_rotation_;      /// dynamic parameter: On true it adds a rotiation to the tf published caused by the projection. Only in combinaltion with publish_tf.
     bool publish_marker_;           /// dynamic parameter: on true objects are published using marker msgs
     double map_border_;             /// dynamic parameter: Border on the created map [meter]
     double resolution_;             /// dynamic parameter: Resolution of the generated map [m/pix]

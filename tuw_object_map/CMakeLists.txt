@@ -44,6 +44,7 @@ ament_target_dependencies(
   "tuw_geometry"
   "tuw_geometry_msgs"
   "tuw_object_map_msgs"
+  "geographic_msgs"
   "tuw_ros2_utils"
   "OpenCV"
   "GeographicLib"
@@ -121,6 +122,7 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/gps_publisher_node.py
+  scripts/init_navsat_from_object_map.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -147,6 +149,7 @@ ament_export_targets(
 )
 ament_export_dependencies(eigen3_cmake_module)
 ament_export_dependencies(Eigen3 
-"tuw_geometry")
+"tuw_geometry"
+"geographic_msgs")
 
 ament_package()

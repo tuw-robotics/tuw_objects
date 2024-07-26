@@ -1,6 +1,7 @@
 #include "tuw_object_map/object_map_node.hpp"
 #include <tuw_object_map_msgs/objects_json.hpp>
 #include <tuw_json/json.hpp>
+#include <tf2/LinearMath/Quaternion.h>
 #include <opencv2/imgcodecs.hpp>
 #include <filesystem>
 
@@ -30,11 +31,13 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
 
   pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(topic_name_map_to_provide_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
   pub_objects_on_map_ = this->create_publisher<tuw_object_map_msgs::msg::Objects>(topic_name_objects_to_provide_, 10);
+  pub_geo_pose_map_ = this->create_publisher<geographic_msgs::msg::GeoPose>(topic_name_geo_pose_map_, 10);
   sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::Objects>(topic_name_objects_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
 
   service_objects_reqeust();
 
-  if(pub_interval_ > 0){
+  if (pub_interval_ > 0)
+  {
     timer_ = create_wall_timer(std::chrono::milliseconds(1000) * pub_interval_, std::bind(&ObjectMapNode::on_timer, this));
   }
 }
@@ -119,7 +122,8 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::Objects &msg
     RCLCPP_INFO(this->get_logger(), "received objects allready");
     return;
   }
-  if(msg.objects.empty()){
+  if (msg.objects.empty())
+  {
     RCLCPP_INFO(this->get_logger(), "No objects in received msg");
     return;
   }
@@ -145,6 +149,7 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::Objects &msg
   cv::Vec3d utm_tr, utm_bl; /// top right and bottom left
   double gamma, k;
   int nr_of_points = 0;
+  geo_pose_map_ = std::make_shared<geographic_msgs::msg::GeoPose>();
   for (const auto &o : msg_objects_tmp->objects)
   {
     for (const auto &g : o.geo_points)
@@ -198,6 +203,20 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::Objects &msg
   RCLCPP_INFO(this->get_logger(), "%s", object_map->info_map().c_str());
   RCLCPP_INFO(this->get_logger(), "%s", object_map->info_geo().c_str());
 
+  {
+    // compute the map pose in WGS84
+    double gamma_in_deg, k;
+    GeographicLib::UTMUPS::Reverse(utm_zone, utm_northp, object_map->utm()[0], object_map->utm()[1], geo_pose_map_->position.latitude, geo_pose_map_->position.longitude, gamma_in_deg, k);
+    geo_pose_map_->position.altitude = object_map->utm()[2];
+    tf2::Quaternion q;
+    double gamma_negativ_in_rad = -gamma_in_deg * M_PI / 180.0;
+    q.setEuler(0., 0., gamma_negativ_in_rad);
+    geo_pose_map_->orientation.x = q.x();
+    geo_pose_map_->orientation.y = q.y();
+    geo_pose_map_->orientation.z = q.z();
+    geo_pose_map_->orientation.w = q.w();
+    RCLCPP_INFO(this->get_logger(), "geo_pose_map: %12.10f, %12.10f, %12.10f, @ %f rad", geo_pose_map_->position.latitude, geo_pose_map_->position.longitude, geo_pose_map_->position.altitude, gamma_negativ_in_rad);
+  }
   /// computing map_points for all objects in map frame
   object_map->comptue_map_points(*msg_objects_tmp);
   msg_objects_tmp->header.frame_id = frame_map_;
@@ -361,6 +380,7 @@ void ObjectMapNode::publish_marker()
 void ObjectMapNode::publish_transforms_utm_map()
 {
   RCLCPP_INFO(this->get_logger(), "publish_transforms_utm_map");
+  pub_geo_pose_map_->publish(*geo_pose_map_);
 
   if (publish_tf_ && object_map_)
   {
@@ -372,6 +392,22 @@ void ObjectMapNode::publish_transforms_utm_map()
     tf.transform.translation.x = utm_bl[0];
     tf.transform.translation.y = utm_bl[1];
     tf.transform.translation.z = utm_bl[2];
+    if (publish_tf_rotation_)
+    {
+      tf2::Quaternion q;
+      q.setEuler(0., 0., utm_meridian_convergence_);
+      tf.transform.rotation.x = q.x();
+      tf.transform.rotation.y = q.y();
+      tf.transform.rotation.z = q.z();
+      tf.transform.rotation.w = q.w();
+    }
+    else
+    {
+      tf.transform.rotation.x = 0.;
+      tf.transform.rotation.y = 0.;
+      tf.transform.rotation.z = 0.;
+      tf.transform.rotation.w = 1.;
+    }
     RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
     static bool file_written = false;
     if (!file_written && !debug_dest_folder_.empty())
@@ -384,24 +420,16 @@ void ObjectMapNode::publish_transforms_utm_map()
       if (yaml_datei.is_open())
       {
         char cmd[0x1FF];
-        sprintf(cmd, "ros2 run tf2_ros static_transform_publisher %lf %lf %lf 0.0 0.0 0.0 1.0 %s %s",
-                utm_bl[0], utm_bl[1], utm_bl[2], tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
+        sprintf(cmd, "ros2 run tf2_ros static_transform_publisher %lf %lf %lf %lf %lf %lf %lf %s %s",
+                utm_bl[0], utm_bl[1], utm_bl[2],
+                tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z, tf.transform.rotation.w,
+                tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
         yaml_datei << "# objects location " << std::endl;
         yaml_datei << "# utm zone " << object_map_->zone();
         yaml_datei << (object_map_->is_north() ? "north" : "south") << std::endl;
         yaml_datei << cmd << std::endl;
         yaml_datei.close();
       }
-      std::string object_map_param_file(debug_dest_folder_ + "mapimage.jgw");
-      tuw::WorldFile wf;
-      wf.resolution_x = object_map_->resolution_x();
-      wf.resolution_y = object_map_->resolution_y();
-      wf.coordinate_x = object_map_->utm()[0];
-      wf.coordinate_y = object_map_->utm()[1];
-      wf.coordinate_z = object_map_->utm()[2];
-      wf.origin_x = object_map_->origin_x();
-      wf.origin_y = object_map_->origin_y();
-      wf.write_jgw(object_map_param_file);
     }
     broadcaster_utm_->sendTransform(tf);
   }
@@ -429,7 +457,6 @@ void ObjectMapNode::publish_transforms_top_left()
     tf_broadcaster->sendTransform(tf);
   }
 }
-
 
 void ObjectMapNode::publish_map()
 {
@@ -476,6 +503,7 @@ void ObjectMapNode::declare_parameters()
   declare_parameters_with_description("timeout_service_call", 5, "Timeout on the GetGraph servide after startup in seconds. If 0, the timeout will be infinity", 0, 600, 1);
   declare_parameters_with_description("debug_folder", "/tmp/ros", "Debug root folder, if set it information is stored in a subfolder of debug_folder with the node name.");
   declare_parameters_with_description("publish_tf", true, "On true a tf from frame_utm to frame_map is published");
+  declare_parameters_with_description("publish_tf_rotation", false, "On true it adds a rotiation to the tf published caused by the projection. Only in combinaltion with publish_tf. ");
   declare_parameters_with_description("publish_marker", true, "On true objects are published using marker msgs");
   declare_parameters_with_description("frame_map", "map", "Name of the map frame, only need if publish_tf == true");
   declare_parameters_with_description("frame_utm", "utm", "Name of the utm frame, only need if publish_tf == true");
@@ -496,6 +524,7 @@ bool ObjectMapNode::read_dynamic_parameters()
   update_parameter_and_log("publish_marker", publish_marker_, changes, first_call);
   update_parameter_and_log("show_map", show_map_, changes, first_call);
   update_parameter_and_log("publish_tf", publish_tf_, changes, first_call);
+  update_parameter_and_log("publish_tf_rotation", publish_tf_rotation_, changes, first_call);
   update_parameter_and_log("utm_z_offset", utm_z_offset_, changes, first_call);
 
   first_call = false;
