@@ -1,6 +1,7 @@
 #include "tuw_shape_map/object_map_node.hpp"
-#include <tuw_object_map_msgs/objects_json.hpp>
+#include <json/json.h>
 #include <tuw_json/json.hpp>
+#include <tuw_object_msgs/shape_array_json.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <opencv2/imgcodecs.hpp>
 #include <filesystem>
@@ -30,9 +31,9 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   }
 
   pub_occupancy_grid_map_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(topic_name_map_to_provide_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
-  pub_objects_on_map_ = this->create_publisher<tuw_object_map_msgs::msg::Objects>(topic_name_objects_to_provide_, 10);
+  pub_objects_on_map_ = this->create_publisher<tuw_object_msgs::msg::ShapeArray>(topic_name_objects_to_provide_, 10);
   pub_geo_pose_map_ = this->create_publisher<geographic_msgs::msg::GeoPose>(topic_name_geo_pose_map_, 10);
-  sub_object_map_ = create_subscription<tuw_object_map_msgs::msg::Objects>(topic_name_objects_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
+  sub_object_map_ = create_subscription<tuw_object_msgs::msg::ShapeArray>(topic_name_objects_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
 
   service_objects_reqeust();
 
@@ -63,7 +64,7 @@ void ObjectMapNode::services_init_providors()
   if (!srv_object_map_)
   {
     // Create a service that provides the object map
-    srv_object_map_ = create_service<tuw_object_map_msgs::srv::GetObjects>(
+    srv_object_map_ = create_service<tuw_object_msgs::srv::GetShapeArray>(
         service_name_objects_to_provide_,
         std::bind(&ObjectMapNode::callback_get_objects, this, _1, _2, _3));
   }
@@ -71,7 +72,7 @@ void ObjectMapNode::services_init_providors()
 void ObjectMapNode::service_objects_reqeust()
 {
 
-  auto client = this->create_client<tuw_object_map_msgs::srv::GetObjects>(
+  auto client = this->create_client<tuw_object_msgs::srv::GetShapeArray>(
       service_name_objects_to_call_);
 
   // Wait for the service to be available
@@ -90,7 +91,7 @@ void ObjectMapNode::service_objects_reqeust()
     }
   }
   // Create a request
-  auto request = std::make_shared<tuw_object_map_msgs::srv::GetObjects::Request>();
+  auto request = std::make_shared<tuw_object_msgs::srv::GetShapeArray::Request>();
 
   auto result_future = client->async_send_request(request);
 
@@ -103,17 +104,17 @@ void ObjectMapNode::service_objects_reqeust()
   }
   RCLCPP_INFO(this->get_logger(), "Successfuly call service map");
   auto result = result_future.get();
-  process_objects(result->map);
+  process_objects(result->shapes);
 }
 
 void ObjectMapNode::callback_object_map(
-    const tuw_object_map_msgs::msg::Objects::SharedPtr msg)
+    const tuw_object_msgs::msg::ShapeArray::SharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "callback_objects");
   process_objects(*msg);
 }
 
-void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::Objects &msg)
+void ObjectMapNode::process_objects(const tuw_object_msgs::msg::ShapeArray &msg)
 {
 
   std::scoped_lock lock(lock_);
@@ -122,14 +123,14 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::Objects &msg
     RCLCPP_INFO(this->get_logger(), "received objects allready");
     return;
   }
-  if (msg.objects.empty())
+  if (msg.shapes.empty())
   {
     RCLCPP_INFO(this->get_logger(), "No objects in received msg");
     return;
   }
-  msg_objects_received_ = std::make_shared<tuw_object_map_msgs::msg::Objects>(msg);
+  msg_objects_received_ = std::make_shared<tuw_object_msgs::msg::ShapeArray>(msg);
 
-  auto msg_objects_tmp = std::make_shared<tuw_object_map_msgs::msg::Objects>(msg);
+  auto msg_objects_tmp = std::make_shared<tuw_object_msgs::msg::ShapeArray>(msg);
 
   RCLCPP_INFO(this->get_logger(), "I received a new map");
 
@@ -150,21 +151,21 @@ void ObjectMapNode::process_objects(const tuw_object_map_msgs::msg::Objects &msg
   double gamma, k;
   int nr_of_points = 0;
   geo_pose_map_ = std::make_shared<geographic_msgs::msg::GeoPose>();
-  for (const auto &o : msg_objects_tmp->objects)
+  for (const auto &o : msg_objects_tmp->shapes)
   {
-    for (const auto &g : o.geo_points)
+    for (const auto &g : o.points)
     {
       if (nr_of_points == 0)
       {
-        cv::Vec3d p_lla(g.latitude, g.longitude, g.altitude);
-        GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1], gamma, k);
-        p_utm[2] = g.altitude;
+        cv::Vec3d p_lla(g.x, g.y, g.z);
+        GeographicLib::UTMUPS::Forward(g.x, g.y, utm_zone, utm_northp, p_utm[0], p_utm[1], gamma, k);
+        p_utm[2] = g.z;
         utm_tr = p_utm; /// top right
 
         utm_bl = p_utm; /// bottom left
       }
-      GeographicLib::UTMUPS::Forward(g.latitude, g.longitude, utm_zone, utm_northp, p_utm[0], p_utm[1], gamma, k);
-      p_utm[2] = g.altitude;
+      GeographicLib::UTMUPS::Forward(g.x, g.y, utm_zone, utm_northp, p_utm[0], p_utm[1], gamma, k);
+      p_utm[2] = g.z;
       if (utm_tr[0] < p_utm[0])
         utm_tr[0] = p_utm[0];
       if (utm_tr[1] < p_utm[1])
@@ -317,11 +318,11 @@ void ObjectMapNode::publish_marker()
     marker->color.g = 0.0;
     marker->color.b = 0.0;
     marker->color.a = 0.5;
-    for (const auto &o : msg_objects_processed_->objects)
+    for (const auto &o : msg_objects_processed_->shapes)
     {
-      for (const auto &g : o.geo_points)
+      for (const auto &g : o.points)
       {
-        cv::Vec3d p_utm = object_map_->lla2utm(cv::Vec3d(g.latitude, g.longitude, g.altitude));
+        cv::Vec3d p_utm = object_map_->lla2utm(cv::Vec3d(g.x, g.y, g.z));
         geometry_msgs::msg::Point p;
         p.x = p_utm[0];
         p.y = p_utm[1];
@@ -360,11 +361,11 @@ void ObjectMapNode::publish_marker()
     marker->color.g = 1.0;
     marker->color.b = 0.0;
     marker->color.a = 0.5;
-    for (const auto &o : msg_objects_processed_->objects)
+    for (const auto &o : msg_objects_processed_->shapes)
     {
-      for (const auto &g : o.geo_points)
+      for (const auto &g : o.points)
       {
-        cv::Vec3d p_map = object_map_->lla2world(cv::Vec3d(g.latitude, g.longitude, g.altitude));
+        cv::Vec3d p_map = object_map_->lla2world(cv::Vec3d(g.x, g.y, g.z));
         geometry_msgs::msg::Point p;
         p.x = p_map[0];
         p.y = p_map[1];
@@ -489,12 +490,12 @@ void ObjectMapNode::callback_get_occ_map(
 
 void ObjectMapNode::callback_get_objects(
     const std::shared_ptr<rmw_request_id_t> /*request_header*/,
-    const std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Request> /*request*/,
-    std::shared_ptr<tuw_object_map_msgs::srv::GetObjects::Response> response)
+    const std::shared_ptr<tuw_object_msgs::srv::GetShapeArray::Request> /*request*/,
+    std::shared_ptr<tuw_object_msgs::srv::GetShapeArray::Response> response)
 {
   RCLCPP_INFO(get_logger(), "Handling GetMap request");
   if (msg_objects_processed_)
-    response->map = *msg_objects_processed_;
+    response->shapes = *msg_objects_processed_;
 }
 
 void ObjectMapNode::declare_parameters()

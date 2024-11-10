@@ -15,8 +15,7 @@ find_package(tf2_ros REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(tuw_geometry REQUIRED)
-find_package(tuw_geometry_msgs REQUIRED)
-find_package(tuw_object_map_msgs REQUIRED)
+find_package(tuw_object_msgs REQUIRED)
 find_package(tuw_ros2_utils REQUIRED)
 find_package(geographic_msgs REQUIRED)
 find_package(tuw_json REQUIRED)
@@ -42,8 +41,7 @@ ament_target_dependencies(
   "rclcpp"
   "rclcpp_components"
   "tuw_geometry"
-  "tuw_geometry_msgs"
-  "tuw_object_map_msgs"
+  "tuw_object_msgs"
   "geographic_msgs"
   "tuw_ros2_utils"
   "OpenCV"
@@ -68,8 +66,7 @@ ament_target_dependencies(
   "nav_msgs"
   "visualization_msgs"
   "tuw_geometry"
-  "tuw_geometry_msgs"
-  "tuw_object_map_msgs"
+  "tuw_object_msgs"
   "tuw_ros2_utils"
   "tuw_json"
   "OpenCV"

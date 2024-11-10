@@ -1,4 +1,8 @@
 #include "tuw_shape_map/object_map.hpp"
+#include "tuw_object_msgs/shape.hpp"
+#include "tuw_object_msgs/shape_array.hpp"
+#include "tuw_std_msgs/parameter_array.hpp"
+
 #include <iostream>
 #include <fstream>
 #include <opencv2/highgui.hpp>
@@ -91,13 +95,15 @@ cv::Mat &ObjectMap::mat()
   return img_costmap_;
 }
 
-void ObjectMap::comptue_map_points(tuw_object_map_msgs::msg::Objects &msg) const
+void ObjectMap::comptue_map_points(tuw_object_msgs::msg::ShapeArray &msg) const
 {
-  for (auto &o : msg.objects)
+  
+  /*
+  for (auto &o : msg.shapes)
   {
-    o.map_points.clear();
+    o.points.clear();
     cv::Vec3d p_world, p_lla, p_utm;
-    for (const auto &geo_point : o.geo_points)
+    for (const auto &geo_point : o.points)
     {
       p_lla = cv::Vec3d(geo_point.latitude, geo_point.longitude, geo_point.altitude);
       lla2utm(p_lla, p_utm);
@@ -107,76 +113,85 @@ void ObjectMap::comptue_map_points(tuw_object_map_msgs::msg::Objects &msg) const
       o.map_points.push_back(p);
     }
   }
+  */
 }
 
-void ObjectMap::draw(const tuw_object_map_msgs::msg::Objects &msg)
+void ObjectMap::draw(const tuw_object_msgs::msg::ShapeArray &msg)
 {
 
   /// Frist draw free space
-  for (const auto &o : msg.objects)
+  for (const auto &o : msg.shapes)
   {
     cv::Vec3d p0, p1;
-    if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
+    if (o.type == tuw_object_msgs::msg::Shape::TYPE_PLANT_WINE_ROW)
     {
-      if (o.geo_points.size() > 0)
+      if (o.points.size() > 0)
       {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-        line(p0, p0, ObjectMap::CELL_FREE, o.bondary_radius[0]);
+        double free = static_cast<const tuw_std_msgs::ParameterArray&>(o.params_points[0]).value<double>("free");
+        p0 = cv::Vec3d(o.points[0].x, o.points[0].y, o.points[0].z);
+        line(p0, p0, ObjectMap::CELL_FREE, free);
       }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
+      for (size_t i = 1; i < o.points.size(); i++)
       {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        line(p0, p1, ObjectMap::CELL_FREE, o.bondary_radius[i]);
+        double free = static_cast<const tuw_std_msgs::ParameterArray&>(o.params_points[i]).value<double>("free");
+        p1 = cv::Vec3d(o.points[i].x, o.points[i].y, o.points[i].z);
+        line(p0, p1, ObjectMap::CELL_FREE, free);
         p0 = p1;
       }
     }
-    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT) ||
-             (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_STREET) ||
-             (o.type == tuw_object_map_msgs::msg::Object::TYPE_TRANSIT_GRAVEL))
+    else if ((o.type == tuw_object_msgs::msg::Shape::TYPE_TRANSIT) ||
+             (o.type == tuw_object_msgs::msg::Shape::TYPE_TRANSIT_STREET) ||
+             (o.type == tuw_object_msgs::msg::Shape::TYPE_TRANSIT_GRAVEL))
     {
-      if (o.geo_points.size() > 0)
+      if (o.points.size() > 0)
       {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-        line(p0, p0, ObjectMap::CELL_FREE, o.bondary_radius[0]);
+        double free = static_cast<const tuw_std_msgs::ParameterArray&>(o.params_points[0]).value<double>("free");
+        p0 = cv::Vec3d(o.points[0].x, o.points[0].y, o.points[0].z);
+        line(p0, p0, ObjectMap::CELL_FREE, free);
       }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
+      for (size_t i = 1; i < o.points.size(); i++)
       {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        line(p0, p1, ObjectMap::CELL_FREE, o.bondary_radius[i]);
+        double free = static_cast<const tuw_std_msgs::ParameterArray&>(o.params_points[i]).value<double>("free");
+        p1 = cv::Vec3d(o.points[i].x, o.points[i].y, o.points[i].z);
+        line(p0, p1, ObjectMap::CELL_FREE, free);
         p0 = p1;
       }
     }
   }
   /// Frist draw occupied space
-  for (const auto &o : msg.objects)
+  for (const auto &o : msg.shapes)
   {
     cv::Vec3d p0, p1;
-    if (o.type == tuw_object_map_msgs::msg::Object::TYPE_PLANT_WINE_ROW)
+    if (o.type == tuw_object_msgs::msg::Shape::TYPE_PLANT_WINE_ROW)
     {
-      if (o.geo_points.size() > 0)
+      if (o.points.size() > 0)
       {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-        line(p0, p0, ObjectMap::CELL_OCCUPIED, o.enflation_radius[0]);
+        double occupied = static_cast<const tuw_std_msgs::ParameterArray&>(o.params_points[0]).value<double>("occupied");
+        p0 = cv::Vec3d(o.points[0].x, o.points[0].y, o.points[0].z);
+        line(p0, p0, ObjectMap::CELL_OCCUPIED, occupied);
       }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
+      for (size_t i = 1; i < o.points.size(); i++)
       {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        line(p0, p1, ObjectMap::CELL_OCCUPIED, o.enflation_radius[i]);
+        double occupied = static_cast<const tuw_std_msgs::ParameterArray&>(o.params_points[i]).value<double>("occupied");
+        p1 = cv::Vec3d(o.points[i].x, o.points[i].y, o.points[i].z);
+        line(p0, p1, ObjectMap::CELL_OCCUPIED, occupied);
         p0 = p1;
       }
     }
-    else if ((o.type == tuw_object_map_msgs::msg::Object::TYPE_OBSTACLE_TREE))
+    else if ((o.type == tuw_object_msgs::msg::Shape::TYPE_OBSTACLE_TREE))
     {
       cv::Vec3d p0, p1;
-      if (o.geo_points.size() > 0)
+      if (o.points.size() > 0)
       {
-        p0 = cv::Vec3d(o.geo_points[0].latitude, o.geo_points[0].longitude, o.geo_points[0].altitude);
-        line(p0, p0, ObjectMap::CELL_OCCUPIED, o.enflation_radius[0]);
+        double occupied = static_cast<const tuw_std_msgs::ParameterArray&>(o.params_points[0]).value<double>("occupied");
+        p0 = cv::Vec3d(o.points[0].x, o.points[0].y, o.points[0].z);
+        line(p0, p0, ObjectMap::CELL_OCCUPIED, occupied);
       }
-      for (size_t i = 1; i < o.geo_points.size(); i++)
+      for (size_t i = 1; i < o.points.size(); i++)
       {
-        p1 = cv::Vec3d(o.geo_points[i].latitude, o.geo_points[i].longitude, o.geo_points[i].altitude);
-        line(p0, p1, ObjectMap::CELL_OCCUPIED, o.enflation_radius[i]);
+        double occupied = static_cast<const tuw_std_msgs::ParameterArray&>(o.params_points[i]).value<double>("occupied");
+        p1 = cv::Vec3d(o.points[i].y, o.points[i].x, o.points[i].z);
+        line(p0, p1, ObjectMap::CELL_OCCUPIED, occupied);
         p0 = p1;
       }
     }
