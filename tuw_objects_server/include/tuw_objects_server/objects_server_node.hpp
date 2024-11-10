@@ -4,7 +4,7 @@
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <thread>
-#include <tuw_object_map_msgs/msg/objects.hpp>
+#include <tuw_object_map_msgs/objects.hpp>
 #include <tuw_object_map_msgs/srv/get_objects.hpp>
 #include <std_srvs/srv/trigger.hpp>
 
