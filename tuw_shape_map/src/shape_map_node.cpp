@@ -1,4 +1,4 @@
-#include "tuw_shape_map/object_map_node.hpp"
+#include "tuw_shape_map/shape_map_node.hpp"
 #include <json/json.h>
 #include <tuw_json/json.hpp>
 #include <tuw_object_msgs/shape_array_json.hpp>
@@ -10,7 +10,7 @@ using std::placeholders::_1;
 using std::placeholders::_2;
 using std::placeholders::_3;
 
-using namespace tuw_object_map;
+using namespace tuw_shape_map;
 
 ObjectMapNode::ObjectMapNode(const std::string &node_name)
     : Node(node_name)

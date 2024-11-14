@@ -7,7 +7,7 @@
 #include <tuw_geometry/geo_handler.hpp>
 #include <tuw_object_msgs/msg/shape_array.hpp>
 
-namespace tuw_object_map
+namespace tuw_shape_map
 {
 
   class ObjectMap : public tuw::GeoHdl

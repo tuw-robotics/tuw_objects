@@ -5,7 +5,7 @@
 #include <opencv2/core/core.hpp>
 #include <tuw_ros2_utils/node.hpp>
 #include <thread>
-#include <tuw_shape_map/object_map.hpp>
+#include <tuw_shape_map/shape_map.hpp>
 #include <tuw_object_msgs/msg/shape_array.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/static_transform_broadcaster.h>
@@ -18,7 +18,7 @@
 #include <tuw_object_msgs/srv/get_shape_array.hpp>
 #include <geographic_msgs/msg/geo_pose.hpp>
 
-namespace tuw_object_map
+namespace tuw_shape_map
 {
   class ObjectMapNode : public tuw::Node
   {

@@ -1,4 +1,4 @@
-#include "tuw_shape_map/object_map.hpp"
+#include "tuw_shape_map/shape_map.hpp"
 #include "tuw_object_msgs/shape.hpp"
 #include "tuw_object_msgs/shape_array.hpp"
 #include "tuw_std_msgs/parameter_array.hpp"
@@ -9,7 +9,7 @@
 #include <opencv2/imgproc.hpp>
 #include <GeographicLib/UTMUPS.hpp>
 
-using namespace tuw_object_map;
+using namespace tuw_shape_map;
 
 void onMouse(int event, int x, int y, int, void *userdata)
 {
