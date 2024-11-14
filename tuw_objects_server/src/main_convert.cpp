@@ -14,6 +14,7 @@ void convert(const tuw_object_map_msgs::Objects src, tuw_object_msgs::ShapeArray
         tuw_object_msgs::Shape shape;
         shape.id = object.id;
         shape.type = object.type;
+        shape.shape = tuw_object_msgs::Shape::SHAPE_NA;
         if (use_wgs84){
             for(auto &wgs84: object.geo_points){
                 tuw_geometry_msgs::Point p(wgs84.latitude, wgs84.longitude, wgs84.altitude);
@@ -23,6 +24,17 @@ void convert(const tuw_object_map_msgs::Objects src, tuw_object_msgs::ShapeArray
         {
             shape.points = object.map_points;
         }
+        if (shape.type == tuw_object_msgs::Shape::TYPE_PLANT)
+            shape.shape = tuw_object_msgs::Shape::SHAPE_POINT;
+        else if (shape.type == tuw_object_msgs::Shape::TYPE_PLANT_WINE_ROW)
+            shape.shape = tuw_object_msgs::Shape::SHAPE_LINE_STRIP;
+        else if (shape.type == tuw_object_msgs::Shape::TYPE_OBSTACLE)
+            shape.shape = tuw_object_msgs::Shape::SHAPE_POINT;
+        else if (shape.type == tuw_object_msgs::Shape::TYPE_OBSTACLE_HOUSE)
+            shape.shape = tuw_object_msgs::Shape::SHAPE_POLYGON;
+        else if (shape.type == tuw_object_msgs::Shape::TYPE_OBSTACLE_TREE)
+            shape.shape = tuw_object_msgs::Shape::SHAPE_CIRCLE;
+        
         shape.params_points.clear();
         shape.params.id = object.id;
         for(size_t i = 0; i < object.enflation_radius.size(); i++){
