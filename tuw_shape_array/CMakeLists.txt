@@ -20,13 +20,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
 find_package(GeographicLib REQUIRED)
 
 
-add_executable(transform_shape_array src/transform_shapes_node.cpp src/standalone_transform_shapes.cpp)
-target_include_directories(transform_shape_array PUBLIC
+add_executable(transform_shape_array_node src/transform_shapes_node.cpp src/standalone_transform_shapes.cpp)
+target_include_directories(transform_shape_array_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(transform_shape_array PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(transform_shape_array_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(
-  transform_shape_array
+  transform_shape_array_node
   "rclpy"
   "rclcpp"
   "rclcpp_components"
@@ -42,7 +42,7 @@ install(
 )
 
 install(TARGETS 
-transform_shape_array
+  transform_shape_array_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

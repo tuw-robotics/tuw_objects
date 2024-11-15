@@ -16,9 +16,9 @@ namespace tuw_objects
     ShapeServerNode(const std::string &node_name);
 
   private:
-    const std::string topic_name_objects_{"objects"};       /// topic name to subscribe for the map topic
-    const std::string service_name_objects_{"get_objects"}; /// service name provided for GetObjects
-    const std::string service_name_publish_objects_{"publish_objects"};     /// service name to trigger a republish
+    const std::string topic_name_objects_{"shapes"};       /// topic name to subscribe for the map topic
+    const std::string service_name_objects_{"get_shapes"}; /// service name provided for GetObjects
+    const std::string service_name_publish_objects_{"publish_shapes"};     /// service name to trigger a republish
 
     // Publisher for the objects
     rclcpp::Publisher<tuw_object_msgs::msg::ShapeArray>::SharedPtr pub_objects_;

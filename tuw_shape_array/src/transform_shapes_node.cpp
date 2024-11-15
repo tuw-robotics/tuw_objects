@@ -27,8 +27,8 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
     RCLCPP_INFO(this->get_logger(), "debug_dest_folder: %s", debug_dest_folder_.c_str());
   }
 
-  pub_objects_on_map_ = this->create_publisher<tuw_object_msgs::msg::ShapeArray>(topic_name_objects_to_provide_, 10);
-  sub_object_map_ = create_subscription<tuw_object_msgs::msg::ShapeArray>(topic_name_objects_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_object_map, this, _1));
+  pub_shapes_transformed_ = this->create_publisher<tuw_object_msgs::msg::ShapeArray>(topic_name_shapes_to_provide_, 10);
+  sub_shapes_ = create_subscription<tuw_object_msgs::msg::ShapeArray>(topic_name_shaoes_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_shapes, this, _1));
 
   if (pub_interval_ > 0)
   {
@@ -41,14 +41,14 @@ void ObjectMapNode::on_timer()
   RCLCPP_INFO(this->get_logger(), "on_timer");
 }
 
-void ObjectMapNode::callback_object_map(
+void ObjectMapNode::callback_shapes(
     const tuw_object_msgs::msg::ShapeArray::SharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "callback_objects");
-  process_objects(*msg);
+  start_process(*msg);
 }
 
-void ObjectMapNode::process_objects(const tuw_object_msgs::msg::ShapeArray &msg)
+void ObjectMapNode::start_process(const tuw_object_msgs::msg::ShapeArray &msg)
 {
 
 }
