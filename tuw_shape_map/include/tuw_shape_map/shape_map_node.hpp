@@ -27,11 +27,11 @@ namespace tuw_shape_map
 
   private:
     std::mutex lock_;                                                         /// mutex to allow one process a time
-    const std::string topic_name_objects_to_subscribe_{"objects"};            /// topic name to subscribe
-    const std::string service_name_objects_to_call_{"get_objects"};           /// service name to call
+    const std::string topic_name_objects_to_subscribe_{"shapes"};             /// topic name to subscribe
+    const std::string service_name_objects_to_call_{"get_shapes"};            /// service name to call
     const std::string topic_name_map_to_provide_{"map"};                      /// topic name to provide
     const std::string topic_name_geo_pose_map_{"geo_pose_map"};               /// topic name to provide
-    const std::string topic_name_objects_to_provide_{"objects_on_map"};       /// topic name to provide objects with computed map_points
+    const std::string topic_name_objects_to_provide_{"shapes_on_map"};        /// topic name to provide objects with computed map_points
     const std::string service_name_map_to_provide_{"get_map"};                /// service name to provide
     const std::string service_name_objects_to_provide_{"get_objects_on_map"}; /// service name to provide objects with computed map_points
 
@@ -41,12 +41,6 @@ namespace tuw_shape_map
     /// callback for the incomming object map
     void callback_object_map(const tuw_object_msgs::msg::ShapeArray::SharedPtr msg);
 
-    /// publisher for the computed map (OccupancyGrid)
-    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_occupancy_grid_map_;
-
-    /// publisher map pose
-    rclcpp::Publisher<geographic_msgs::msg::GeoPose>::SharedPtr pub_geo_pose_map_;
-
     /// publisher for objects on map
     rclcpp::Publisher<tuw_object_msgs::msg::ShapeArray>::SharedPtr pub_objects_on_map_;
 
@@ -55,55 +49,14 @@ namespace tuw_shape_map
 
     // last processed objects
     tuw_object_msgs::msg::ShapeArray::SharedPtr msg_objects_processed_;
-    void service_objects_reqeust();
 
-    // initialize services
-    void services_init_providors();
-
-    // computed map orition location
-    geographic_msgs::msg::GeoPose::SharedPtr geo_pose_map_;
-
-    // last processed OccupancyGrid
-    nav_msgs::msg::OccupancyGrid::SharedPtr occupancy_map_processed_;
-
-    // A service to provide the occupancy grid (GetMap) and the message to return
-    rclcpp::Service<nav_msgs::srv::GetMap>::SharedPtr srv_occ_map_;
-
-    /**
-     * @brief service callback for an OccupancyGrid Map
-     * @param request_header Service request header
-     * @param request Service request
-     * @param response Service response
-     */
-    void callback_get_occ_map(
-        const std::shared_ptr<rmw_request_id_t> request_header,
-        const std::shared_ptr<nav_msgs::srv::GetMap::Request> request,
-        std::shared_ptr<nav_msgs::srv::GetMap::Response> response);
-
-    // A service to provide the object map (GetObjectMap)
-    rclcpp::Service<tuw_object_msgs::srv::GetShapeArray>::SharedPtr srv_object_map_;
-
-    /**
-     * @brief Objects service callback
-     * @param request_header Service request header
-     * @param request Service request
-     * @param response Service response
-     */
-    void callback_get_objects(
-        const std::shared_ptr<rmw_request_id_t> request_header,
-        const std::shared_ptr<tuw_object_msgs::srv::GetShapeArray::Request> request,
-        std::shared_ptr<tuw_object_msgs::srv::GetShapeArray::Response> response);
-
-    rclcpp::TimerBase::SharedPtr timer_;           /// timer for loop_rate
-
-    // Used for publishing the static utm->map
-    std::unique_ptr<tf2_ros::StaticTransformBroadcaster> broadcaster_utm_;
-
+    // timer for loop_rate
+    rclcpp::TimerBase::SharedPtr timer_;
+    
     // callbacks
     void on_timer();
 
     /// Object map objecet need to compute the occupancy grid as well as marker and transforms
-    std::shared_ptr<ObjectMap> object_map_;
     double utm_meridian_convergence_;
 
     int pub_interval_;              /// static parameter: republishing interval
@@ -125,10 +78,6 @@ namespace tuw_shape_map
     void declare_parameters();      // declare parameters
     void read_static_parameters();  // ready the static parameters
     bool read_dynamic_parameters(); // ready the dynamic parameters and returns true on changes
-    void publish_transforms_utm_map();
-    void publish_transforms_top_left();
-    void publish_marker();
-    void publish_map();
   };
 }
 #endif // TUW_SHAPE_MAP__SHAPE_MAP_NODE_HPP_

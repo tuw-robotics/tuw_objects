@@ -30,13 +30,13 @@ find_package(GeographicLib REQUIRED)
 
 
 
-add_library(tuw_shape_map src/shape_map.cpp)
-target_compile_features(tuw_shape_map PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_include_directories(tuw_shape_map PUBLIC
+add_library(shape_map_node src/shape_map_node.cpp)
+target_compile_features(shape_map_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_include_directories(shape_map_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(
-  tuw_shape_map
+  shape_map_node
   "rclpy"
   "rclcpp"
   "rclcpp_components"
@@ -47,15 +47,15 @@ ament_target_dependencies(
   "OpenCV"
   "GeographicLib"
 )
-target_link_libraries(tuw_shape_map ${GeographicLib_LIBRARIES})
+target_link_libraries(shape_map_node ${GeographicLib_LIBRARIES})
 
 
-add_executable(shape_map_node src/standalone_shape_map.cpp src/shape_map_node.cpp)
+add_executable(shape_map_node src/standalone_shape_map.cpp)
 target_include_directories(shape_map_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 target_compile_features(shape_map_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_link_libraries(shape_map_node tuw_shape_map )
+target_link_libraries(shape_map_node shape_map_node )
 ament_target_dependencies(
   shape_map_node
   "rclpy"
@@ -79,7 +79,7 @@ install(
 )
 
 install(TARGETS 
-  tuw_shape_map
+  shape_map_node
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -116,7 +116,7 @@ ament_export_include_directories(
   include
 )
 ament_export_libraries(
-  tuw_shape_map
+  shape_map_node
 )
 ament_export_targets(
   export_${PROJECT_NAME}
