@@ -1,10 +1,8 @@
-#include "tuw_shape_map/shape_map_node.hpp"
+#include <filesystem>
 #include <json/json.h>
 #include <tuw_json/json.hpp>
 #include <tuw_object_msgs/shape_array_json.hpp>
-#include <tf2/LinearMath/Quaternion.h>
-#include <opencv2/imgcodecs.hpp>
-#include <filesystem>
+#include "tuw_shape_array/transform_shapes_node.hpp"
 
 using std::placeholders::_1;
 using std::placeholders::_2;

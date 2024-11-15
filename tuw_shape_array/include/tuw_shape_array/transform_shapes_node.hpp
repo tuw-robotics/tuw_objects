@@ -2,21 +2,10 @@
 #define TUW_SHAPE_MAP__SHAPE_MAP_NODE_HPP_
 
 #include <memory>
-#include <opencv2/core/core.hpp>
-#include <tuw_ros2_utils/node.hpp>
 #include <thread>
-#include <tuw_shape_map/shape_map.hpp>
+#include <tuw_ros2_utils/node.hpp>
 #include <tuw_object_msgs/msg/shape_array.hpp>
-#include <tf2_ros/transform_broadcaster.h>
-#include <tf2_ros/static_transform_broadcaster.h>
-#include <nav_msgs/msg/occupancy_grid.hpp>
-#include <nav_msgs/srv/get_map.hpp>
-
-#include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
-#include <visualization_msgs/msg/marker.hpp>
-#include <tuw_object_msgs/srv/get_shape_array.hpp>
-#include <geographic_msgs/msg/geo_pose.hpp>
 
 namespace tuw_shape_map
 {

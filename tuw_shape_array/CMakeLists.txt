@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(tuw_shape_map)
+project(tuw_shape_array)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -10,18 +10,9 @@ find_package(ament_cmake REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(tf2_ros REQUIRED)
-find_package(nav_msgs REQUIRED)
-find_package(visualization_msgs REQUIRED)
-find_package(tuw_geometry REQUIRED)
 find_package(tuw_object_msgs REQUIRED)
 find_package(tuw_ros2_utils REQUIRED)
-find_package(geographic_msgs REQUIRED)
 find_package(tuw_json REQUIRED)
-find_package(OpenCV REQUIRED)
-find_package(eigen3_cmake_module REQUIRED)
-find_package(Eigen3)
 
 
 # Geographiclib installs FindGeographicLib.cmake to this non-standard location
@@ -29,47 +20,19 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
 find_package(GeographicLib REQUIRED)
 
 
-
-add_library(shape_map_node src/shape_map_node.cpp)
-target_compile_features(shape_map_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_include_directories(shape_map_node PUBLIC
+add_executable(transform_shape_array src/transform_shapes_node.cpp src/standalone_transform_shapes.cpp)
+target_include_directories(transform_shape_array PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+target_compile_features(transform_shape_array PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(
-  shape_map_node
+  transform_shape_array
   "rclpy"
   "rclcpp"
   "rclcpp_components"
-  "tuw_geometry"
-  "tuw_object_msgs"
-  "geographic_msgs"
-  "tuw_ros2_utils"
-  "OpenCV"
-  "GeographicLib"
-)
-target_link_libraries(shape_map_node ${GeographicLib_LIBRARIES})
-
-
-add_executable(shape_map_node src/standalone_shape_map.cpp)
-target_include_directories(shape_map_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(shape_map_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_link_libraries(shape_map_node shape_map_node )
-ament_target_dependencies(
-  shape_map_node
-  "rclpy"
-  "rclcpp"
-  "rclcpp_components"
-  "tf2"
-  "tf2_ros"
-  "nav_msgs"
-  "visualization_msgs"
-  "tuw_geometry"
   "tuw_object_msgs"
   "tuw_ros2_utils"
   "tuw_json"
-  "OpenCV"
 )
 
 
@@ -79,15 +42,7 @@ install(
 )
 
 install(TARGETS 
-  shape_map_node
-  EXPORT export_${PROJECT_NAME}
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
-)
-
-install(TARGETS 
-  shape_map_node
+transform_shape_array
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -115,12 +70,11 @@ endif()
 ament_export_include_directories(
   include
 )
-ament_export_libraries(
-  shape_map_node
-)
-ament_export_targets(
-  export_${PROJECT_NAME}
-)
+#ament_export_libraries(
+#)
+#ament_export_targets(
+#  export_${PROJECT_NAME}
+#)
 ament_export_dependencies(eigen3_cmake_module)
 ament_export_dependencies(Eigen3 
 "tuw_geometry"
