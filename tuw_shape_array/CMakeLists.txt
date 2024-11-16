@@ -13,6 +13,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(tuw_object_msgs REQUIRED)
 find_package(tuw_ros2_utils REQUIRED)
 find_package(tuw_json REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 
 # Geographiclib installs FindGeographicLib.cmake to this non-standard location
@@ -30,9 +31,11 @@ ament_target_dependencies(
   "rclpy"
   "rclcpp"
   "rclcpp_components"
+  "tf2_ros"
   "tuw_object_msgs"
   "tuw_ros2_utils"
   "tuw_json"
+  GeographicLib
 )
 
 

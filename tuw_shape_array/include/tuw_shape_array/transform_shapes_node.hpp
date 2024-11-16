@@ -3,8 +3,10 @@
 
 #include <memory>
 #include <thread>
+#include <tf2/LinearMath/Transform.h>
 #include <tuw_ros2_utils/node.hpp>
 #include <tuw_object_msgs/msg/shape_array.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 
 namespace tuw_shape_map
@@ -36,6 +38,12 @@ namespace tuw_shape_map
     // last received shapes
     tuw_object_msgs::msg::ShapeArray::SharedPtr msg_shapes_received_;
 
+    // msgs transformed into utm
+    tuw_object_msgs::msg::ShapeArray::SharedPtr msg_shapes_utm_;
+
+    // msgs transformed into map frame
+    tuw_object_msgs::msg::ShapeArray::SharedPtr msg_shapes_map_;
+
     // last processed shapes
     tuw_object_msgs::msg::ShapeArray::SharedPtr msg_shapes_processed_;
 
@@ -63,7 +71,11 @@ namespace tuw_shape_map
     double utm_z_offset_;           /// dynamic parameter: z offset on the location of the map
 
     /// starts the computation
-    void start_process(const tuw_object_msgs::msg::ShapeArray &msg);
+    void start_process(const tuw_object_msgs::msg::ShapeArray::SharedPtr msg);
+    void transform_wgs84_to_utm(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, int utm_zone);
+    void transform_utm_to_map(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, const tf2::Transform &tf);
+    void compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, double border, tf2::Transform &tf);
+
     void declare_parameters();      // declare parameters
     void read_static_parameters();  // ready the static parameters
     bool read_dynamic_parameters(); // ready the dynamic parameters and returns true on changes

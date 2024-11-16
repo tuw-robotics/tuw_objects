@@ -2,7 +2,9 @@
 #include <json/json.h>
 #include <tuw_json/json.hpp>
 #include <tuw_object_msgs/shape_array_json.hpp>
+#include <GeographicLib/UTMUPS.hpp>
 #include "tuw_shape_array/transform_shapes_node.hpp"
+#include <tf2/LinearMath/Quaternion.h>
 
 using std::placeholders::_1;
 using std::placeholders::_2;
@@ -44,15 +46,130 @@ void ObjectMapNode::on_timer()
 void ObjectMapNode::callback_shapes(
     const tuw_object_msgs::msg::ShapeArray::SharedPtr msg)
 {
-  RCLCPP_INFO(this->get_logger(), "callback_objects");
-  start_process(*msg);
+  RCLCPP_INFO(this->get_logger(), "callback_shapes");
+  start_process(msg);
 }
 
-void ObjectMapNode::start_process(const tuw_object_msgs::msg::ShapeArray &msg)
+void ObjectMapNode::start_process(const tuw_object_msgs::msg::ShapeArray::SharedPtr msg)
 {
+  /*
+  if (msg_shapes_received_ && (*msg_shapes_received_ == *msg) && (read_dynamic_parameters() == false))
+  {
+    RCLCPP_INFO(this->get_logger(), "received shapes allready");
+    return;
+  }
+  if (msg->shapes.empty())
+  {
+    RCLCPP_INFO(this->get_logger(), "No shapes in received msg");
+    return;
+  }
+  */
 
+  RCLCPP_INFO(this->get_logger(), "I received a new shapes");
+  msg_shapes_received_ = msg;
+
+  if (msg_shapes_received_->header.frame_id != "WGS84")
+  {
+    RCLCPP_INFO(this->get_logger(), "shapes are not in the global WSG84 systems");
+    return;
+  }
+
+  // find utm zone by checking the first shape
+  auto wgs84 = msg_shapes_received_->shapes[0].points[0];
+  int utm_zone;
+  bool utm_northp = true;
+  double gamma, k;
+  tuw_geometry_msgs::Point utm;
+  GeographicLib::UTMUPS::Forward(wgs84.x, wgs84.y, utm_zone, utm_northp, utm.x, utm.y, gamma, k);
+  utm_meridian_convergence_ = gamma * M_PI / 180.0;
+  RCLCPP_INFO(this->get_logger(), "gamma: %f Deg, utm_meridian_convergence: %f rad, scale: %f", gamma, utm_meridian_convergence_, k);
+
+  msg_shapes_utm_ = std::make_shared<tuw_object_msgs::msg::ShapeArray>(*msg);
+  transform_wgs84_to_utm(msg_shapes_utm_, utm_zone);
+  tf2::Transform tf_utm_2_map;
+  compute_map_frame(msg_shapes_utm_, map_border_, tf_utm_2_map);
+  msg_shapes_map_ = std::make_shared<tuw_object_msgs::msg::ShapeArray>(*msg_shapes_utm_);
+  transform_utm_to_map(msg_shapes_map_, tf_utm_2_map);
+  pub_shapes_transformed_->publish(*msg_shapes_map_);
 }
 
+void ObjectMapNode::transform_wgs84_to_utm(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, int utm_zone)
+{
+  bool utm_northp = true;
+  double gamma, k;
+  for (auto &shape : shapes->shapes)
+  {
+    for (auto &p : shape.points)
+    {
+      GeographicLib::UTMUPS::Forward(p.x, p.y, utm_zone, utm_northp, p.x, p.y, gamma, k, utm_zone);
+    }
+  }
+  shapes->header.frame_id = GeographicLib::UTMUPS::EncodeZone(utm_zone, utm_northp);
+}
+
+void ObjectMapNode::transform_utm_to_map(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, const tf2::Transform &tf)
+{
+  for (auto &shape : shapes->shapes)
+  {
+    for (auto &p : shape.points)
+    {
+      tf2::Vector3 des = tf * tf2::Vector3(p.x, p.y, p.z);
+      p.x = des[0], p.y = des[1], p.z = des[2];
+    }
+  }
+  shapes->header.frame_id = frame_map_;
+}
+
+void ObjectMapNode::compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, double border, tf2::Transform &tf)
+{
+  /// crates a rectangular shape reprecenting the frame with border
+  auto map_frame = tuw_object_msgs::Shape(shapes->shapes.size());
+  map_frame.shape = tuw_object_msgs::Shape::SHAPE_RECTANGLE;
+  map_frame.type = tuw_object_msgs::Shape::TYPE_MAP;
+  map_frame.points.resize(2);
+  map_frame.points[0] = shapes->shapes[0].points[0];
+  map_frame.points[1] = shapes->shapes[0].points[0];
+  for (auto &shape : shapes->shapes)
+  {
+    if (shape.type == tuw_object_msgs::Shape::TYPE_MAP)
+    {
+      RCLCPP_ERROR(this->get_logger(), "A map frame does allready exist");
+      return;
+    }
+    for (auto &p : shape.points)
+    {
+      map_frame.points[0].x = std::min(map_frame.points[0].x, p.x);
+      map_frame.points[0].y = std::min(map_frame.points[0].y, p.y);
+      map_frame.points[0].z = std::min(map_frame.points[0].z, p.z);
+      map_frame.points[1].x = std::max(map_frame.points[1].x, p.x);
+      map_frame.points[1].y = std::max(map_frame.points[1].y, p.y);
+      map_frame.points[1].z = std::max(map_frame.points[1].z, p.z);
+    }
+  }
+  map_frame.points[0].x -= border;
+  map_frame.points[0].y -= border;
+  map_frame.points[0].z -= border;
+  map_frame.points[1].x += border;
+  map_frame.points[1].y += border;
+  map_frame.points[1].z += border;
+  /// make the map frame size nice
+  double dx = std::ceil(map_frame.points[1].x - map_frame.points[0].x);
+  double dy = std::ceil(map_frame.points[1].y - map_frame.points[0].y);
+  double dz = std::ceil(map_frame.points[1].z - map_frame.points[0].z);
+  map_frame.points[1].x = map_frame.points[0].x + dx;
+  map_frame.points[1].y = map_frame.points[0].y + dy;
+  map_frame.points[1].z = map_frame.points[0].z + dz;
+
+  shapes->shapes.push_back(map_frame);
+
+  tf2::Quaternion q(0,0,0,1);
+  if (publish_tf_rotation_)
+  {
+    q.setEuler(0., 0., utm_meridian_convergence_);
+  }
+  tf.setOrigin(-tf2::Vector3(map_frame.points[0].x, map_frame.points[0].y, map_frame.points[0].z));
+  tf.setRotation(q);
+}
 
 void ObjectMapNode::declare_parameters()
 {

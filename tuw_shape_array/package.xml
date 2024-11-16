@@ -12,6 +12,7 @@
   <depend>rclpy</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
+  <depend>tf2_ros</depend>
   <depend>tuw_object_msgs</depend>
   <depend>tuw_json</depend>
   <depend>tuw_ros2_utils</depend>
