@@ -6,6 +6,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include <json/json.h>
 #include <tuw_json/json.hpp>
+#include <tuw_geometry_msgs/pose.hpp>
 #include <tuw_object_map_msgs/objects_json.hpp>
 #include <tuw_object_msgs/shape_array_json.hpp>
 
@@ -17,12 +18,15 @@ void convert(const tuw_object_map_msgs::Objects src, tuw_object_msgs::ShapeArray
         shape.shape = tuw_object_msgs::Shape::SHAPE_NA;
         if (use_wgs84){
             for(auto &wgs84: object.geo_points){
-                tuw_geometry_msgs::Point p(wgs84.latitude, wgs84.longitude, wgs84.altitude);
-                shape.points.push_back(std::move(p));
+                tuw_geometry_msgs::Pose pose(wgs84.latitude, wgs84.longitude, wgs84.altitude);
+                shape.poses.push_back(std::move(pose));
             }
         } else 
         {
-            shape.points = object.map_points;
+            for(auto &point: object.map_points){
+                tuw_geometry_msgs::Pose pose(point.x, point.y, point.z);
+                shape.poses.push_back(std::move(pose));
+            }
         }
         if (shape.type == tuw_object_msgs::Shape::TYPE_PLANT)
             shape.shape = tuw_object_msgs::Shape::SHAPE_POINT;
@@ -34,15 +38,19 @@ void convert(const tuw_object_map_msgs::Objects src, tuw_object_msgs::ShapeArray
             shape.shape = tuw_object_msgs::Shape::SHAPE_POLYGON;
         else if (shape.type == tuw_object_msgs::Shape::TYPE_OBSTACLE_TREE)
             shape.shape = tuw_object_msgs::Shape::SHAPE_CIRCLE;
+        else if (shape.type == tuw_object_msgs::Shape::TYPE_TRANSIT)
+            shape.shape = tuw_object_msgs::Shape::SHAPE_LINE_STRIP;
+        else if (shape.type == tuw_object_msgs::Shape::TYPE_TRANSIT_STREET)
+            shape.shape = tuw_object_msgs::Shape::SHAPE_LINE_STRIP;
+        else if (shape.type == tuw_object_msgs::Shape::TYPE_TRANSIT_GRAVEL)
+            shape.shape = tuw_object_msgs::Shape::SHAPE_LINE_STRIP;
         
-        shape.params_points.clear();
-        shape.params.id = object.id;
+        shape.params_poses.clear();
         for(size_t i = 0; i < object.enflation_radius.size(); i++){
             tuw_std_msgs::ParameterArray param;
             param.add("free", object.enflation_radius[i]);
             param.add("occupied", object.bondary_radius[i]);
-            param.id = i;
-            shape.params_points.push_back(std::move(param));
+            shape.params_poses.push_back(std::move(param));
         } 
         des.shapes.push_back(std::move(shape));       
     }

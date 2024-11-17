@@ -75,7 +75,7 @@ void ObjectMapNode::start_process(const tuw_object_msgs::msg::ShapeArray::Shared
   }
 
   // find utm zone by checking the first shape
-  auto wgs84 = msg_shapes_received_->shapes[0].points[0];
+  auto wgs84 = msg_shapes_received_->shapes[0].poses[0].position;
   int utm_zone;
   bool utm_northp = true;
   double gamma, k;
@@ -99,9 +99,9 @@ void ObjectMapNode::transform_wgs84_to_utm(tuw_object_msgs::msg::ShapeArray::Sha
   double gamma, k;
   for (auto &shape : shapes->shapes)
   {
-    for (auto &p : shape.points)
+    for (auto &p : shape.poses)
     {
-      GeographicLib::UTMUPS::Forward(p.x, p.y, utm_zone, utm_northp, p.x, p.y, gamma, k, utm_zone);
+      GeographicLib::UTMUPS::Forward(p.position.x, p.position.y, utm_zone, utm_northp, p.position.x, p.position.y, gamma, k, utm_zone);
     }
   }
   shapes->header.frame_id = GeographicLib::UTMUPS::EncodeZone(utm_zone, utm_northp);
@@ -111,8 +111,9 @@ void ObjectMapNode::transform_utm_to_map(tuw_object_msgs::msg::ShapeArray::Share
 {
   for (auto &shape : shapes->shapes)
   {
-    for (auto &p : shape.points)
+    for (auto &pose : shape.poses)
     {
+      auto &p = pose.position;
       tf2::Vector3 des = tf * tf2::Vector3(p.x, p.y, p.z);
       p.x = des[0], p.y = des[1], p.z = des[2];
     }
@@ -126,9 +127,9 @@ void ObjectMapNode::compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPt
   auto map_frame = tuw_object_msgs::Shape(shapes->shapes.size());
   map_frame.shape = tuw_object_msgs::Shape::SHAPE_RECTANGLE;
   map_frame.type = tuw_object_msgs::Shape::TYPE_MAP;
-  map_frame.points.resize(2);
-  map_frame.points[0] = shapes->shapes[0].points[0];
-  map_frame.points[1] = shapes->shapes[0].points[0];
+  map_frame.poses.resize(2);
+  map_frame.poses[0] = shapes->shapes[0].poses[0];
+  map_frame.poses[1] = shapes->shapes[0].poses[0];
   for (auto &shape : shapes->shapes)
   {
     if (shape.type == tuw_object_msgs::Shape::TYPE_MAP)
@@ -136,29 +137,29 @@ void ObjectMapNode::compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPt
       RCLCPP_ERROR(this->get_logger(), "A map frame does allready exist");
       return;
     }
-    for (auto &p : shape.points)
+    for (auto &p : shape.poses)
     {
-      map_frame.points[0].x = std::min(map_frame.points[0].x, p.x);
-      map_frame.points[0].y = std::min(map_frame.points[0].y, p.y);
-      map_frame.points[0].z = std::min(map_frame.points[0].z, p.z);
-      map_frame.points[1].x = std::max(map_frame.points[1].x, p.x);
-      map_frame.points[1].y = std::max(map_frame.points[1].y, p.y);
-      map_frame.points[1].z = std::max(map_frame.points[1].z, p.z);
+      map_frame.poses[0].position.x = std::min(map_frame.poses[0].position.x, p.position.x);
+      map_frame.poses[0].position.y = std::min(map_frame.poses[0].position.y, p.position.y);
+      map_frame.poses[0].position.z = std::min(map_frame.poses[0].position.z, p.position.z);
+      map_frame.poses[1].position.x = std::max(map_frame.poses[1].position.x, p.position.x);
+      map_frame.poses[1].position.y = std::max(map_frame.poses[1].position.y, p.position.y);
+      map_frame.poses[1].position.z = std::max(map_frame.poses[1].position.z, p.position.z);
     }
   }
-  map_frame.points[0].x -= border;
-  map_frame.points[0].y -= border;
-  map_frame.points[0].z -= border;
-  map_frame.points[1].x += border;
-  map_frame.points[1].y += border;
-  map_frame.points[1].z += border;
+  map_frame.poses[0].position.x -= border;
+  map_frame.poses[0].position.y -= border;
+  map_frame.poses[0].position.z -= border;
+  map_frame.poses[1].position.x += border;
+  map_frame.poses[1].position.y += border;
+  map_frame.poses[1].position.z += border;
   /// make the map frame size nice
-  double dx = std::ceil(map_frame.points[1].x - map_frame.points[0].x);
-  double dy = std::ceil(map_frame.points[1].y - map_frame.points[0].y);
-  double dz = std::ceil(map_frame.points[1].z - map_frame.points[0].z);
-  map_frame.points[1].x = map_frame.points[0].x + dx;
-  map_frame.points[1].y = map_frame.points[0].y + dy;
-  map_frame.points[1].z = map_frame.points[0].z + dz;
+  double dx = std::ceil(map_frame.poses[1].position.x - map_frame.poses[0].position.x);
+  double dy = std::ceil(map_frame.poses[1].position.y - map_frame.poses[0].position.y);
+  double dz = std::ceil(map_frame.poses[1].position.z - map_frame.poses[0].position.z);
+  map_frame.poses[1].position.x = map_frame.poses[0].position.x + dx;
+  map_frame.poses[1].position.y = map_frame.poses[0].position.y + dy;
+  map_frame.poses[1].position.z = map_frame.poses[0].position.z + dz;
 
   shapes->shapes.push_back(map_frame);
 
@@ -167,7 +168,7 @@ void ObjectMapNode::compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPt
   {
     q.setEuler(0., 0., utm_meridian_convergence_);
   }
-  tf.setOrigin(-tf2::Vector3(map_frame.points[0].x, map_frame.points[0].y, map_frame.points[0].z));
+  tf.setOrigin(-tf2::Vector3(map_frame.poses[0].position.x, map_frame.poses[0].position.y, map_frame.poses[0].position.z));
   tf.setRotation(q);
 }
 
