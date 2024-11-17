@@ -5,6 +5,7 @@
 #include <thread>
 #include <tf2/LinearMath/Transform.h>
 #include <tuw_ros2_utils/node.hpp>
+#include <tuw_object_msgs/shape.hpp>
 #include <tuw_object_msgs/msg/shape_array.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -17,7 +18,6 @@ namespace tuw_shape_map
     ObjectMapNode(const std::string &node_name);
 
   private:
-    std::mutex lock_;                                                            /// mutex to allow one process a time
     const std::string topic_name_shaoes_to_subscribe_{"shapes"};                 /// topic name to subscribe
     const std::string service_name_shapes_to_call_{"get_shapes"};                /// service name to call
     const std::string topic_name_map_to_provide_{"map"};                         /// topic name to provide
@@ -46,6 +46,11 @@ namespace tuw_shape_map
 
     // last processed shapes
     tuw_object_msgs::msg::ShapeArray::SharedPtr msg_shapes_processed_;
+
+    // Used for publishing the static utm->map
+    //std::unique_ptr<tf2_ros::StaticTransformBroadcaster> broadcaster_utm_;
+
+    std::shared_ptr<tuw_object_msgs::Shape> map_shape_;
 
     // timer for loop_rate
     rclcpp::TimerBase::SharedPtr timer_;
@@ -79,6 +84,7 @@ namespace tuw_shape_map
     void declare_parameters();      // declare parameters
     void read_static_parameters();  // ready the static parameters
     bool read_dynamic_parameters(); // ready the dynamic parameters and returns true on changes
+    void publish_transforms_utm_map();
   };
 }
 #endif // TUW_SHAPE_MAP__SHAPE_MAP_NODE_HPP_

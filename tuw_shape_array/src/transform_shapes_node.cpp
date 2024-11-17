@@ -124,12 +124,12 @@ void ObjectMapNode::transform_utm_to_map(tuw_object_msgs::msg::ShapeArray::Share
 void ObjectMapNode::compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, double border, tf2::Transform &tf)
 {
   /// crates a rectangular shape reprecenting the frame with border
-  auto map_frame = tuw_object_msgs::Shape(shapes->shapes.size());
-  map_frame.shape = tuw_object_msgs::Shape::SHAPE_RECTANGLE;
-  map_frame.type = tuw_object_msgs::Shape::TYPE_MAP;
-  map_frame.poses.resize(2);
-  map_frame.poses[0] = shapes->shapes[0].poses[0];
-  map_frame.poses[1] = shapes->shapes[0].poses[0];
+  map_shape_ = std::make_shared<tuw_object_msgs::Shape>(shapes->shapes.size());
+  map_shape_->shape = tuw_object_msgs::Shape::SHAPE_RECTANGLE;
+  map_shape_->type = tuw_object_msgs::Shape::TYPE_MAP;
+  map_shape_->poses.resize(2);
+  map_shape_->poses[0] = shapes->shapes[0].poses[0];
+  map_shape_->poses[1] = shapes->shapes[0].poses[0];
   for (auto &shape : shapes->shapes)
   {
     if (shape.type == tuw_object_msgs::Shape::TYPE_MAP)
@@ -139,37 +139,95 @@ void ObjectMapNode::compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPt
     }
     for (auto &p : shape.poses)
     {
-      map_frame.poses[0].position.x = std::min(map_frame.poses[0].position.x, p.position.x);
-      map_frame.poses[0].position.y = std::min(map_frame.poses[0].position.y, p.position.y);
-      map_frame.poses[0].position.z = std::min(map_frame.poses[0].position.z, p.position.z);
-      map_frame.poses[1].position.x = std::max(map_frame.poses[1].position.x, p.position.x);
-      map_frame.poses[1].position.y = std::max(map_frame.poses[1].position.y, p.position.y);
-      map_frame.poses[1].position.z = std::max(map_frame.poses[1].position.z, p.position.z);
+      map_shape_->poses[0].position.x = std::min(map_shape_->poses[0].position.x, p.position.x);
+      map_shape_->poses[0].position.y = std::min(map_shape_->poses[0].position.y, p.position.y);
+      map_shape_->poses[0].position.z = std::min(map_shape_->poses[0].position.z, p.position.z);
+      map_shape_->poses[1].position.x = std::max(map_shape_->poses[1].position.x, p.position.x);
+      map_shape_->poses[1].position.y = std::max(map_shape_->poses[1].position.y, p.position.y);
+      map_shape_->poses[1].position.z = std::max(map_shape_->poses[1].position.z, p.position.z);
     }
   }
-  map_frame.poses[0].position.x -= border;
-  map_frame.poses[0].position.y -= border;
-  map_frame.poses[0].position.z -= border;
-  map_frame.poses[1].position.x += border;
-  map_frame.poses[1].position.y += border;
-  map_frame.poses[1].position.z += border;
+  map_shape_->poses[0].position.x -= border;
+  map_shape_->poses[0].position.y -= border;
+  map_shape_->poses[0].position.z -= border;
+  map_shape_->poses[1].position.x += border;
+  map_shape_->poses[1].position.y += border;
+  map_shape_->poses[1].position.z += border;
   /// make the map frame size nice
-  double dx = std::ceil(map_frame.poses[1].position.x - map_frame.poses[0].position.x);
-  double dy = std::ceil(map_frame.poses[1].position.y - map_frame.poses[0].position.y);
-  double dz = std::ceil(map_frame.poses[1].position.z - map_frame.poses[0].position.z);
-  map_frame.poses[1].position.x = map_frame.poses[0].position.x + dx;
-  map_frame.poses[1].position.y = map_frame.poses[0].position.y + dy;
-  map_frame.poses[1].position.z = map_frame.poses[0].position.z + dz;
+  double dx = std::ceil(map_shape_->poses[1].position.x - map_shape_->poses[0].position.x);
+  double dy = std::ceil(map_shape_->poses[1].position.y - map_shape_->poses[0].position.y);
+  double dz = std::ceil(map_shape_->poses[1].position.z - map_shape_->poses[0].position.z);
+  map_shape_->poses[1].position.x = map_shape_->poses[0].position.x + dx;
+  map_shape_->poses[1].position.y = map_shape_->poses[0].position.y + dy;
+  map_shape_->poses[1].position.z = map_shape_->poses[0].position.z + dz;
 
-  shapes->shapes.push_back(map_frame);
+  shapes->shapes.push_back(*map_shape_);
 
   tf2::Quaternion q(0,0,0,1);
   if (publish_tf_rotation_)
   {
     q.setEuler(0., 0., utm_meridian_convergence_);
   }
-  tf.setOrigin(-tf2::Vector3(map_frame.poses[0].position.x, map_frame.poses[0].position.y, map_frame.poses[0].position.z));
+  tf.setOrigin(-tf2::Vector3(map_shape_->poses[0].position.x, map_shape_->poses[0].position.y, map_shape_->poses[0].position.z));
   tf.setRotation(q);
+}
+
+void ObjectMapNode::publish_transforms_utm_map()
+{
+  RCLCPP_INFO(this->get_logger(), "publish_transforms_utm_map");
+/*
+  if (publish_tf_ && object_map_)
+  {
+    geometry_msgs::msg::TransformStamped tf;
+    tf.header.stamp = this->get_clock()->now();
+    tf.header.frame_id = frame_utm_;
+    tf.child_frame_id = frame_map_;
+    cv::Vec3d utm_bl = object_map_->utm();
+    tf.transform.translation.x = utm_bl[0];
+    tf.transform.translation.y = utm_bl[1];
+    tf.transform.translation.z = utm_bl[2];
+    if (publish_tf_rotation_)
+    {
+      tf2::Quaternion q;
+      q.setEuler(0., 0., utm_meridian_convergence_);
+      tf.transform.rotation.x = q.x();
+      tf.transform.rotation.y = q.y();
+      tf.transform.rotation.z = q.z();
+      tf.transform.rotation.w = q.w();
+    }
+    else
+    {
+      tf.transform.rotation.x = 0.;
+      tf.transform.rotation.y = 0.;
+      tf.transform.rotation.z = 0.;
+      tf.transform.rotation.w = 1.;
+    }
+    RCLCPP_INFO_ONCE(this->get_logger(), "publish TF: frame_id: %s, child_frame_id: %s", tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
+    static bool file_written = false;
+    if (!file_written && !debug_dest_folder_.empty())
+    {
+      /// write a human readable file with the transform for debugging reasons
+      file_written = true;
+      std::string yaml_file(debug_dest_folder_ + "transform.txt");
+      std::ofstream yaml_datei(yaml_file);
+      RCLCPP_INFO(this->get_logger(), "writing debug yaml file to: %s", yaml_file.c_str());
+      if (yaml_datei.is_open())
+      {
+        char cmd[0x1FF];
+        sprintf(cmd, "ros2 run tf2_ros static_transform_publisher %lf %lf %lf %lf %lf %lf %lf %s %s",
+                utm_bl[0], utm_bl[1], utm_bl[2],
+                tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z, tf.transform.rotation.w,
+                tf.header.frame_id.c_str(), tf.child_frame_id.c_str());
+        yaml_datei << "# objects location " << std::endl;
+        yaml_datei << "# utm zone " << object_map_->zone();
+        yaml_datei << (object_map_->is_north() ? "north" : "south") << std::endl;
+        yaml_datei << cmd << std::endl;
+        yaml_datei.close();
+      }
+    }
+    broadcaster_utm_->sendTransform(tf);
+  }
+*/
 }
 
 void ObjectMapNode::declare_parameters()
