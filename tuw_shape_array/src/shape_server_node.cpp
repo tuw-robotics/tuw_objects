@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <json/json.h>
 #include <tuw_json/json.hpp>
-#include <tuw_objects_server/shape_server_node.hpp>
+#include <tuw_shape_array/shape_server_node.hpp>
 #include <tuw_object_msgs/shape_array_json.hpp>
 
 using std::placeholders::_1;

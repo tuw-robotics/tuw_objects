@@ -13,6 +13,7 @@
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>tf2_ros</depend>
+  <depend>std_srvs</depend>
   <depend>tuw_object_msgs</depend>
   <depend>tuw_json</depend>
   <depend>tuw_ros2_utils</depend>

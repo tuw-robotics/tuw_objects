@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(tuw_object_msgs REQUIRED)
 find_package(tuw_ros2_utils REQUIRED)
 find_package(tuw_json REQUIRED)
@@ -20,6 +21,20 @@ find_package(tf2_ros REQUIRED)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
 find_package(GeographicLib REQUIRED)
 
+add_executable(shape_server_node src/shape_server_node.cpp src/standalone_shape_server.cpp)
+target_include_directories(shape_server_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(shape_server_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+ament_target_dependencies(
+  shape_server_node
+  "rclpy"
+  "rclcpp"
+  "std_srvs"
+  "rclcpp_components"
+  "tuw_object_msgs"
+  "tuw_json"
+)
 
 add_executable(transform_shape_array_node src/transform_shapes_node.cpp src/standalone_transform_shapes.cpp)
 target_include_directories(transform_shape_array_node PUBLIC
@@ -45,6 +60,7 @@ install(
 )
 
 install(TARGETS 
+  shape_server_node 
   transform_shape_array_node
   DESTINATION lib/${PROJECT_NAME}
 )

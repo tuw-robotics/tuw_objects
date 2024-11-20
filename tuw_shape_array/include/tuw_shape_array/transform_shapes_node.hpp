@@ -18,11 +18,11 @@ namespace tuw_shape_map
     ObjectMapNode(const std::string &node_name);
 
   private:
-    const std::string topic_name_shaoes_to_subscribe_{"shapes"};                 /// topic name to subscribe
+    const std::string topic_name_shaoes_to_subscribe_{"shapes_wgs84"};                 /// topic name to subscribe
     const std::string service_name_shapes_to_call_{"get_shapes"};                /// service name to call
     const std::string topic_name_map_to_provide_{"map"};                         /// topic name to provide
     const std::string topic_name_geo_pose_map_{"geo_pose_map"};                  /// topic name to provide
-    const std::string topic_name_shapes_to_provide_{"shapes_transformed"};       /// topic name to provide objects with computed map_points
+    const std::string topic_name_shapes_to_provide_{"shapes"};       /// topic name to provide objects with computed map_points
     const std::string service_name_map_to_provide_{"get_map"};                   /// service name to provide
     const std::string service_name_shapes_to_provide_{"get_shapes_transformed"}; /// service name to provide objects with computed map_points
 

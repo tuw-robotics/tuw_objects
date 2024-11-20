@@ -13,11 +13,11 @@ windows:
           - ros2 run rviz2 rviz2 -d ./ws02/src/tuw_object_map/tuw_object_map/config/shape_array.rviz
         - shape_server: 
           - printf '\033]2;%s\033\\' 'shape_server'
-          - ros2 run tuw_objects_server shape_server_node --ros-args  -p pub_interval:=1 -r shapes:=shape_server/shapes -r get:=shape_server/get -r publish:=shape_server/publish -p json:=./ws02/src/tuw_greenhive/config/shape_array/starden-2024-01-14.json
+          - ros2 run tuw_shape_array shape_server_node --ros-args  -p pub_interval:=1 -r shapes:=shape_server/shapes_wgs84 -r get:=shape_server/get -r publish:=shape_server/publish -p json:=./ws02/src/tuw_greenhive/config/shape_array/starden-2024-01-14.json
         - shape_transform: 
           - printf '\033]2;%s\033\\' 'shape_transform'
           - sleep 1; ros2 lifecycle set /geo_map configure; sleep 1; ros2 lifecycle set /geo_map activate
-          - ros2 run tuw_shape_array transform_shape_array_node 
+          - ros2 run tuw_shape_array transform_shape_array_node --ros-args -r shapes:=shape_server/shapes_wgs84 -r shapes:=shape_server/shapes
         - geo_map: 
           - printf '\033]2;%s\033\\' 'geo_map'
           - ros2 run tuw_geo_map geo_map_node --ros-args  -p mapimage_folder:=./ws02/src/tuw_geo/tuw_geo_map/config/tuw_geo_map/straden/ -p publish_tf:=true -p frame_relative:=map
