@@ -17,9 +17,9 @@ ShapeServerNode::ShapeServerNode(const std::string &node_name)
   declare_parameters();
   read_parameters();
 
-  read_shape_array(objects_json_);
-  pub_objects_ = this->create_publisher<tuw_object_msgs::msg::ShapeArray>(topic_name_objects_, 10);
-  publish_objects();
+  read_shape_array(shapes_json_);
+  pub_shapes_ = this->create_publisher<tuw_object_msgs::msg::ShapeArray>(topic_name_, 10);
+  publish_shapes();
 
   if(pub_interval_ > 0){
     using namespace std::chrono_literals;
@@ -28,12 +28,12 @@ ShapeServerNode::ShapeServerNode(const std::string &node_name)
     RCLCPP_INFO(get_logger(), "The objects are only published once becaue of pub_interval:=0. The node is waiting for service requests");
   }
   // Create a service that provides the occupancy grid
-  srv_objects_ = create_service<tuw_object_msgs::srv::GetShapeArray>(
-    service_name_objects_,
-    std::bind(&ShapeServerNode::callback_get_objects, this, _1, _2, _3));
+  srv_shapes_ = create_service<tuw_object_msgs::srv::GetShapeArray>(
+    service_get_,
+    std::bind(&ShapeServerNode::callback_get_shapes, this, _1, _2, _3));
 
   srv_publish_ = create_service<std_srvs::srv::Trigger>(
-    service_name_publish_objects_,
+    service_publish_,
     std::bind(&ShapeServerNode::callback_publish, this, _1, _2, _3));
 }
 
@@ -51,7 +51,7 @@ void ShapeServerNode::read_shape_array(const std::string &filename)
   }
 }
 
-void ShapeServerNode::callback_get_objects(
+void ShapeServerNode::callback_get_shapes(
   const std::shared_ptr<rmw_request_id_t>/*request_header*/,
   const std::shared_ptr<tuw_object_msgs::srv::GetShapeArray::Request>/*request*/,
   std::shared_ptr<tuw_object_msgs::srv::GetShapeArray::Response> response)
@@ -68,21 +68,21 @@ void ShapeServerNode::callback_publish(
   RCLCPP_INFO(get_logger(), "Handling publish request");
   if(shapes_){
     response->success = true;
-    publish_objects();
+    publish_shapes();
   }
 }
 
 void ShapeServerNode::callback_timer()
 {
-  publish_objects();
+  publish_shapes();
 }
 
 
-void ShapeServerNode::publish_objects()
+void ShapeServerNode::publish_shapes()
 {
   if(!shapes_) return;
   RCLCPP_INFO(this->get_logger(), "publish_objects");
-  pub_objects_->publish(*shapes_);
+  pub_shapes_->publish(*shapes_);
 }
 
 void ShapeServerNode::declare_parameters()
@@ -94,8 +94,8 @@ void ShapeServerNode::declare_parameters()
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = "Filename to load the objects from a json file if not set the node will wait for a msg on the topic";
-    this->declare_parameter<std::string>("objects_json", "", descriptor);
+    descriptor.description = "Filename to load shapes from a json file if not set the node will wait for a msg on the topic";
+    this->declare_parameter<std::string>("json", "", descriptor);
   }
   {
     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
@@ -108,16 +108,16 @@ void ShapeServerNode::read_parameters()
 {
   this->get_parameter<std::string>("frame_id", frame_id_);
   RCLCPP_INFO(this->get_logger(), "frame_id: %s", frame_id_.c_str());
-  this->get_parameter<std::string>("objects_json", objects_json_);
-  RCLCPP_INFO(this->get_logger(), "objects_json: %s", objects_json_.c_str());
+  this->get_parameter<std::string>("json", shapes_json_);
+  RCLCPP_INFO(this->get_logger(), "json: %s", shapes_json_.c_str());
   this->get_parameter<int>("pub_interval", pub_interval_);
   RCLCPP_INFO_ONCE(this->get_logger(), "pub_interval %4d", pub_interval_);
 
-  if (!objects_json_.empty())
+  if (!shapes_json_.empty())
   {
-    if (!std::filesystem::exists(objects_json_) || !std::filesystem::is_regular_file(objects_json_))
-      RCLCPP_ERROR(this->get_logger(), "Error: %s des not exist", objects_json_.c_str());
+    if (!std::filesystem::exists(shapes_json_) || !std::filesystem::is_regular_file(shapes_json_))
+      RCLCPP_ERROR(this->get_logger(), "Error: %s des not exist", shapes_json_.c_str());
   } else {
-    RCLCPP_ERROR(this->get_logger(), "Error: objects_json not set");
+    RCLCPP_ERROR(this->get_logger(), "Error: json not set");
   }
 }

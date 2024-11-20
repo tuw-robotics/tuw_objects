@@ -16,20 +16,20 @@ namespace tuw_objects
     ShapeServerNode(const std::string &node_name);
 
   private:
-    const std::string topic_name_objects_{"shapes"};       /// topic name to subscribe for the map topic
-    const std::string service_name_objects_{"get_shapes"}; /// service name provided for GetObjects
-    const std::string service_name_publish_objects_{"publish_shapes"};     /// service name to trigger a republish
+    const std::string topic_name_{"shapes"};       /// topic name to subscribe for the map topic
+    const std::string service_get_{"get"};  /// service name provided for GetShapeArray
+    const std::string service_publish_{"publish"}; /// service name to trigger a republish
 
-    // Publisher for the objects
-    rclcpp::Publisher<tuw_object_msgs::msg::ShapeArray>::SharedPtr pub_objects_;
+    // Publisher for the shapes
+    rclcpp::Publisher<tuw_object_msgs::msg::ShapeArray>::SharedPtr pub_shapes_;
 
-    // A service to provide the objects
-    rclcpp::Service<tuw_object_msgs::srv::GetShapeArray>::SharedPtr srv_objects_;
+    // A service to provide the shapes
+    rclcpp::Service<tuw_object_msgs::srv::GetShapeArray>::SharedPtr srv_shapes_;
 
     // A service to trigger a publish
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr srv_publish_;
 
-    // objects read from file to be published
+    // shapes read from file to be published
     tuw_object_msgs::msg::ShapeArray::SharedPtr shapes_;
 
     // thread for the time
@@ -48,7 +48,7 @@ namespace tuw_objects
     std::string frame_id_;
 
     // file read
-    std::string objects_json_;
+    std::string shapes_json_;
 
     // file publishing interval in seconds if zero node publish only onces
     int pub_interval_;
@@ -64,9 +64,9 @@ namespace tuw_objects
     void read_parameters();
 
     /**
-     * publish objects
+     * publish shapes
      */
-    void publish_objects();
+    void publish_shapes();
 
     /**
      * @brief Map getting service callback
@@ -74,7 +74,7 @@ namespace tuw_objects
      * @param request Service request
      * @param response Service response
      */
-    void callback_get_objects(
+    void callback_get_shapes(
         const std::shared_ptr<rmw_request_id_t> request_header,
         const std::shared_ptr<tuw_object_msgs::srv::GetShapeArray::Request> request,
         std::shared_ptr<tuw_object_msgs::srv::GetShapeArray::Response> response);
