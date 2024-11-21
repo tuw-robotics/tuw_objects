@@ -9,7 +9,7 @@ using std::placeholders::_1;
 using std::placeholders::_2;
 using std::placeholders::_3;
 
-using namespace tuw_objects;
+using namespace tuw_shape_array;
 
 ShapeServerNode::ShapeServerNode(const std::string &node_name)
     : Node(node_name)

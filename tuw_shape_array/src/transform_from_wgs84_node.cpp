@@ -3,16 +3,16 @@
 #include <tuw_json/json.hpp>
 #include <tuw_object_msgs/shape_array_json.hpp>
 #include <GeographicLib/UTMUPS.hpp>
-#include "tuw_shape_array/transform_shapes_node.hpp"
+#include "tuw_shape_array/transform_from_wgs84_node.hpp"
 #include <tf2/LinearMath/Quaternion.h>
 
 using std::placeholders::_1;
 using std::placeholders::_2;
 using std::placeholders::_3;
 
-using namespace tuw_shape_map;
+using namespace tuw_shape_array;
 
-ObjectMapNode::ObjectMapNode(const std::string &node_name)
+FromWGS84Node::FromWGS84Node(const std::string &node_name)
     : Node(node_name)
 {
   declare_parameters();
@@ -30,27 +30,27 @@ ObjectMapNode::ObjectMapNode(const std::string &node_name)
   }
 
   pub_shapes_transformed_ = this->create_publisher<tuw_object_msgs::msg::ShapeArray>(topic_name_shapes_to_provide_, 10);
-  sub_shapes_ = create_subscription<tuw_object_msgs::msg::ShapeArray>(topic_name_shaoes_to_subscribe_, 10, std::bind(&ObjectMapNode::callback_shapes, this, _1));
+  sub_shapes_ = create_subscription<tuw_object_msgs::msg::ShapeArray>(topic_name_shaoes_to_subscribe_, 10, std::bind(&FromWGS84Node::callback_shapes, this, _1));
 
   if (pub_interval_ > 0)
   {
-    timer_ = create_wall_timer(std::chrono::milliseconds(1000) * pub_interval_, std::bind(&ObjectMapNode::on_timer, this));
+    timer_ = create_wall_timer(std::chrono::milliseconds(1000) * pub_interval_, std::bind(&FromWGS84Node::on_timer, this));
   }
 }
 
-void ObjectMapNode::on_timer()
+void FromWGS84Node::on_timer()
 {
   RCLCPP_INFO(this->get_logger(), "on_timer");
 }
 
-void ObjectMapNode::callback_shapes(
+void FromWGS84Node::callback_shapes(
     const tuw_object_msgs::msg::ShapeArray::SharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "callback_shapes");
   start_process(msg);
 }
 
-void ObjectMapNode::start_process(const tuw_object_msgs::msg::ShapeArray::SharedPtr msg)
+void FromWGS84Node::start_process(const tuw_object_msgs::msg::ShapeArray::SharedPtr msg)
 {
   /*
   if (msg_shapes_received_ && (*msg_shapes_received_ == *msg) && (read_dynamic_parameters() == false))
@@ -93,7 +93,7 @@ void ObjectMapNode::start_process(const tuw_object_msgs::msg::ShapeArray::Shared
   pub_shapes_transformed_->publish(*msg_shapes_map_);
 }
 
-void ObjectMapNode::transform_wgs84_to_utm(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, int utm_zone)
+void FromWGS84Node::transform_wgs84_to_utm(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, int utm_zone)
 {
   bool utm_northp = true;
   double gamma, k;
@@ -107,7 +107,7 @@ void ObjectMapNode::transform_wgs84_to_utm(tuw_object_msgs::msg::ShapeArray::Sha
   shapes->header.frame_id = GeographicLib::UTMUPS::EncodeZone(utm_zone, utm_northp);
 }
 
-void ObjectMapNode::transform_utm_to_map(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, const tf2::Transform &tf)
+void FromWGS84Node::transform_utm_to_map(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, const tf2::Transform &tf)
 {
   for (auto &shape : shapes->shapes)
   {
@@ -121,7 +121,7 @@ void ObjectMapNode::transform_utm_to_map(tuw_object_msgs::msg::ShapeArray::Share
   shapes->header.frame_id = frame_map_;
 }
 
-void ObjectMapNode::compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, double border, tf2::Transform &tf)
+void FromWGS84Node::compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPtr shapes, double border, tf2::Transform &tf)
 {
   /// crates a rectangular shape reprecenting the frame with border
   map_shape_ = std::make_shared<tuw_object_msgs::Shape>(shapes->shapes.size());
@@ -172,7 +172,7 @@ void ObjectMapNode::compute_map_frame(tuw_object_msgs::msg::ShapeArray::SharedPt
   tf.setRotation(q);
 }
 
-void ObjectMapNode::publish_transforms_utm_map()
+void FromWGS84Node::publish_transforms_utm_map()
 {
   RCLCPP_INFO(this->get_logger(), "publish_transforms_utm_map");
 /*
@@ -230,7 +230,7 @@ void ObjectMapNode::publish_transforms_utm_map()
 */
 }
 
-void ObjectMapNode::declare_parameters()
+void FromWGS84Node::declare_parameters()
 {
   declare_parameters_with_description("pub_interval", 5, "Publishing interval in seconds. If 0 or less, the graph is published once.", 0, 100, 1);
   declare_parameters_with_description("timeout_service_call", 5, "Timeout on the GetGraph servide after startup in seconds. If 0, the timeout will be infinity", 0, 600, 1);
@@ -246,7 +246,7 @@ void ObjectMapNode::declare_parameters()
   declare_parameters_with_description("utm_z_offset", 0.0, "offest on Z for the utm -> map frame");
 }
 
-bool ObjectMapNode::read_dynamic_parameters()
+bool FromWGS84Node::read_dynamic_parameters()
 {
 
   static bool first_call = true; /// varible to identify the first time the fnc was called to init all variables
@@ -264,7 +264,7 @@ bool ObjectMapNode::read_dynamic_parameters()
   return changes;
 }
 
-void ObjectMapNode::read_static_parameters()
+void FromWGS84Node::read_static_parameters()
 {
   get_parameter_and_log("debug_folder", debug_root_folder_);
   get_parameter_and_log("pub_interval", pub_interval_);

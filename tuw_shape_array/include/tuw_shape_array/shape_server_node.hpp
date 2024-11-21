@@ -8,7 +8,7 @@
 #include <tuw_object_msgs/srv/get_shape_array.hpp>
 #include <std_srvs/srv/trigger.hpp>
 
-namespace tuw_objects
+namespace tuw_shape_array
 {
   class ShapeServerNode : public rclcpp::Node
   {

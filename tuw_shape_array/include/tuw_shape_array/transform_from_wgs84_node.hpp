@@ -1,5 +1,5 @@
-#ifndef TUW_SHAPE_MAP__SHAPE_MAP_NODE_HPP_
-#define TUW_SHAPE_MAP__SHAPE_MAP_NODE_HPP_
+#ifndef TUW_SHAPE_ARRAY__SHAPE_MAP_NODE_HPP_
+#define TUW_SHAPE_ARRAY__SHAPE_MAP_NODE_HPP_
 
 #include <memory>
 #include <thread>
@@ -10,19 +10,19 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 
-namespace tuw_shape_map
+namespace tuw_shape_array
 {
-  class ObjectMapNode : public tuw::Node
+  class FromWGS84Node : public tuw::Node
   {
   public:
-    ObjectMapNode(const std::string &node_name);
+    FromWGS84Node(const std::string &node_name);
 
   private:
     const std::string topic_name_shaoes_to_subscribe_{"shapes_wgs84"};                 /// topic name to subscribe
+    const std::string topic_name_shapes_to_provide_{"shapes"};       /// topic name to provide objects with computed map_points
     const std::string service_name_shapes_to_call_{"get_shapes"};                /// service name to call
     const std::string topic_name_map_to_provide_{"map"};                         /// topic name to provide
     const std::string topic_name_geo_pose_map_{"geo_pose_map"};                  /// topic name to provide
-    const std::string topic_name_shapes_to_provide_{"shapes"};       /// topic name to provide objects with computed map_points
     const std::string service_name_map_to_provide_{"get_map"};                   /// service name to provide
     const std::string service_name_shapes_to_provide_{"get_shapes_transformed"}; /// service name to provide objects with computed map_points
 
@@ -87,4 +87,4 @@ namespace tuw_shape_map
     void publish_transforms_utm_map();
   };
 }
-#endif // TUW_SHAPE_MAP__SHAPE_MAP_NODE_HPP_
+#endif // TUW_SHAPE_ARRAY__SHAPE_MAP_NODE_HPP_
