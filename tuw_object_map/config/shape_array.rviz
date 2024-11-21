@@ -6,8 +6,8 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /ShapeArray1
         - /Map1
-        - /Map1/Status1
       Splitter Ratio: 0.5
     Tree Height: 555
   - Class: rviz_common/Selection
@@ -61,7 +61,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /shapes_transformed
+        Value: /shape_server/shapes
       Value: true
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map

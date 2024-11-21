@@ -2,6 +2,7 @@
 #include <json/json.h>
 #include <tuw_json/json.hpp>
 #include <tuw_object_msgs/shape_array_json.hpp>
+#include <tuw_std_msgs/parameter_array_json.hpp>
 #include <GeographicLib/UTMUPS.hpp>
 #include "tuw_shape_array/transform_from_wgs84_node.hpp"
 #include <tf2/LinearMath/Quaternion.h>
@@ -70,17 +71,26 @@ void FromWGS84Node::start_process(const tuw_object_msgs::msg::ShapeArray::Shared
 
   if (msg_shapes_received_->header.frame_id != "WGS84")
   {
-    RCLCPP_INFO(this->get_logger(), "shapes are not in the global WSG84 systems");
+    RCLCPP_ERROR(this->get_logger(), "shapes are not in the global WSG84 systems");
     return;
   }
 
   // find utm zone by checking the first shape
-  auto wgs84 = msg_shapes_received_->shapes[0].poses[0].position;
+  //auto wgs84 = msg_shapes_received_->shapes[0].poses[0].position;
+  tuw_std_msgs::ParameterArray &params = static_cast<tuw_std_msgs::ParameterArray &>(msg_shapes_received_->shapes[0].params_poses[0]);
   int utm_zone;
   bool utm_northp = true;
   double gamma, k;
   tuw_geometry_msgs::Point utm;
-  GeographicLib::UTMUPS::Forward(wgs84.x, wgs84.y, utm_zone, utm_northp, utm.x, utm.y, gamma, k);
+  double latitude;
+  double longitude;
+  if(params.get<double>("latitude", latitude) == false){
+    RCLCPP_ERROR(this->get_logger(), "latitude on shape %d point %d missing", 0, 0);
+  }
+  if(params.get<double>("longitude", longitude) == false){
+    RCLCPP_ERROR(this->get_logger(), "longitude on shape %d point %d missing", 0, 0);
+  }
+  GeographicLib::UTMUPS::Forward(latitude, longitude, utm_zone, utm_northp, utm.x, utm.y, gamma, k);
   utm_meridian_convergence_ = gamma * M_PI / 180.0;
   RCLCPP_INFO(this->get_logger(), "gamma: %f Deg, utm_meridian_convergence: %f rad, scale: %f", gamma, utm_meridian_convergence_, k);
 
@@ -99,9 +109,28 @@ void FromWGS84Node::transform_wgs84_to_utm(tuw_object_msgs::msg::ShapeArray::Sha
   double gamma, k;
   for (auto &shape : shapes->shapes)
   {
-    for (auto &p : shape.poses)
+    shape.poses.resize(shape.params_poses.size());
+    for (size_t i = 0; i < shape.poses.size(); i++)
     {
-      GeographicLib::UTMUPS::Forward(p.position.x, p.position.y, utm_zone, utm_northp, p.position.x, p.position.y, gamma, k, utm_zone);
+      auto &p = shape.poses[i];
+      tuw_std_msgs::ParameterArray &params = static_cast<tuw_std_msgs::ParameterArray &>(shape.params_poses[i]);
+      double latitude;
+      double longitude;
+      double altitude;
+      if(params.get<double>("latitude", latitude) == false)
+      {
+        RCLCPP_ERROR(this->get_logger(), "latitude on shape %ld point %ld missing", shape.id, i);
+      }
+      if(params.get<double>("longitude", longitude) == false)
+      {
+        RCLCPP_ERROR(this->get_logger(), "longitude on shape %ld point %ld missing", shape.id, i);
+      }
+      if(params.get<double>("altitude", altitude) == false)
+      {
+        RCLCPP_ERROR(this->get_logger(), "altitude on shape %ld point %ld missing", shape.id, i);
+      }
+      GeographicLib::UTMUPS::Forward(latitude, longitude, utm_zone, utm_northp, p.position.x, p.position.y, gamma, k, utm_zone);
+      p.position.z = altitude;
     }
   }
   shapes->header.frame_id = GeographicLib::UTMUPS::EncodeZone(utm_zone, utm_northp);

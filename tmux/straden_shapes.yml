@@ -17,7 +17,7 @@ windows:
         - shape_transform: 
           - printf '\033]2;%s\033\\' 'shape_transform'
           - sleep 1; ros2 lifecycle set /geo_map configure; sleep 1; ros2 lifecycle set /geo_map activate
-          - ros2 run tuw_shape_array transform_from_wgs84_node --ros-args -r shapes:=shape_server/shapes_wgs84 -r shapes:=shape_server/shapes
+          - ros2 run tuw_shape_array transform_from_wgs84_node --ros-args -r shapes_wgs84:=shape_server/shapes_wgs84 -r shapes:=shape_server/shapes
         - geo_map: 
           - printf '\033]2;%s\033\\' 'geo_map'
           - ros2 run tuw_geo_map geo_map_node --ros-args  -p mapimage_folder:=./ws02/src/tuw_geo/tuw_geo_map/config/tuw_geo_map/straden/ -p publish_tf:=true -p frame_relative:=map

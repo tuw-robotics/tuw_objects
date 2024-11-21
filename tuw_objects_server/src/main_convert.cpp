@@ -17,15 +17,22 @@ void convert(const tuw_object_map_msgs::Objects src, tuw_object_msgs::ShapeArray
         shape.type = object.type;
         shape.shape = tuw_object_msgs::Shape::SHAPE_NA;
         if (use_wgs84){
-            for(auto &wgs84: object.geo_points){
-                tuw_geometry_msgs::Pose pose(wgs84.latitude, wgs84.longitude, wgs84.altitude);
-                shape.poses.push_back(std::move(pose));
+            shape.params_poses.resize(object.geo_points.size());
+            for(size_t i = 0; i < object.geo_points.size(); i++){
+                auto &wgs84 = object.geo_points[i];
+                //tuw_geometry_msgs::Pose pose(wgs84.latitude, wgs84.longitude, wgs84.altitude);
+                //shape.poses.push_back(std::move(pose));
+                tuw_std_msgs::ParameterArray &params = static_cast<tuw_std_msgs::ParameterArray &>(shape.params_poses[i]);
+                params.add("latitude", wgs84.latitude, 12);
+                params.add("longitude", wgs84.longitude, 12);
+                params.add("altitude", wgs84.altitude, 12);
             }
         } else 
         {
-            for(auto &point: object.map_points){
-                tuw_geometry_msgs::Pose pose(point.x, point.y, point.z);
-                shape.poses.push_back(std::move(pose));
+            shape.params_poses.resize(object.map_points.size());
+            for(size_t i = 0; i < object.map_points.size(); i++){
+                auto &point = object.map_points[i];
+                shape.poses[i] = tuw_geometry_msgs::Pose(point.x, point.y, point.z);
             }
         }
         if (shape.type == tuw_object_msgs::Shape::TYPE_PLANT)
@@ -45,12 +52,10 @@ void convert(const tuw_object_map_msgs::Objects src, tuw_object_msgs::ShapeArray
         else if (shape.type == tuw_object_msgs::Shape::TYPE_TRANSIT_GRAVEL)
             shape.shape = tuw_object_msgs::Shape::SHAPE_LINE_STRIP;
         
-        shape.params_poses.clear();
         for(size_t i = 0; i < object.enflation_radius.size(); i++){
-            tuw_std_msgs::ParameterArray param;
-            param.add("free", object.enflation_radius[i]);
-            param.add("occupied", object.bondary_radius[i]);
-            shape.params_poses.push_back(std::move(param));
+            tuw_std_msgs::ParameterArray &params = static_cast<tuw_std_msgs::ParameterArray &>(shape.params_poses[i]);
+            params.add("free", object.enflation_radius[i]);
+            params.add("occupied", object.bondary_radius[i]);
         } 
         des.shapes.push_back(std::move(shape));       
     }
