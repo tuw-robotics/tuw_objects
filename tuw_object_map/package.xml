@@ -20,7 +20,7 @@
   <depend>tuw_geometry</depend>
   <depend>tuw_object_map_msgs</depend>
   <depend>tuw_json</depend>
-  <depend>tuw_ros2_utils</depend>
+  <depend>tuw</depend>
   <depend>OpenCV</depend>
   <depend>geographiclib</depend>
   <build_depend>eigen</build_depend>

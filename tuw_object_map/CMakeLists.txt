@@ -17,7 +17,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(tuw_geometry REQUIRED)
 find_package(tuw_geometry_msgs REQUIRED)
 find_package(tuw_object_map_msgs REQUIRED)
-find_package(tuw_ros2_utils REQUIRED)
+find_package(tuw REQUIRED)
 find_package(geographic_msgs REQUIRED)
 find_package(tuw_json REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -45,7 +45,7 @@ ament_target_dependencies(
   "tuw_geometry_msgs"
   "tuw_object_map_msgs"
   "geographic_msgs"
-  "tuw_ros2_utils"
+  "tuw"
   "OpenCV"
   "GeographicLib"
 )
@@ -70,7 +70,7 @@ ament_target_dependencies(
   "tuw_geometry"
   "tuw_geometry_msgs"
   "tuw_object_map_msgs"
-  "tuw_ros2_utils"
+  "tuw"
   "tuw_json"
   "OpenCV"
 )
