@@ -10,7 +10,6 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <nav_msgs/msg/occupancy_grid.hpp>
-#include <tuw_object_map_msgs/srv/load_map.hpp>
 #include <nav_msgs/srv/get_map.hpp>
 
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
